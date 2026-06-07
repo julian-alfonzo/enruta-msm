@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Home, Users, FileBarChart, Camera, LogOut, Menu } from "lucide-react"
+import { Home, Users, FileBarChart, Camera, LogOut, Menu, MessageSquare } from "lucide-react"
 import { useSession } from "@/components/session-provider"
 import { cn } from "@/lib/utils"
 import {
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/agentes", label: "Agentes", icon: Users },
   { href: "/alcoholemia", label: "Alcoholemia", icon: Camera },
+  { href: "/observaciones", label: "Observaciones", icon: MessageSquare },
   { href: "/reportes", label: "Reportes", icon: FileBarChart },
 ]
 
@@ -26,6 +27,7 @@ const titles: Record<string, string> = {
   "/": "Panel de Administración",
   "/agentes": "Gestión de Agentes",
   "/alcoholemia": "Control de Alcoholemia",
+  "/observaciones": "Reclamos y Observaciones",
   "/reportes": "Reportes",
 }
 

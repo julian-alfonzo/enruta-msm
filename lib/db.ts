@@ -42,3 +42,13 @@ export type Control = {
   fecha_control: string
   created_at: string
 }
+
+export type Observacion = {
+  id: number
+  agente_id: number
+  tipo: "FALTA" | "RECLAMO" | "NOVEDAD"
+  descripcion: string
+  estado: "ABIERTO" | "CERRADO"
+  fecha: string
+  created_at: string
+}
