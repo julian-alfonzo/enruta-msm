@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell"
 import { DashboardView } from "@/components/dashboard-view"
 import { getDashboardStats, getAgentes } from "@/app/actions/agentes"
 
+export const dynamic = "force-dynamic"
+
 export default async function Page() {
   const stats = await getDashboardStats()
   const agentes = await getAgentes()
