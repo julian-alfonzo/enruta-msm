@@ -21,9 +21,10 @@ function fmt(iso: string) {
 }
 
 export function ReportesView() {
+  const today = new Date().toISOString().slice(0, 10)
   const [tipo, setTipo] = useState<ReporteTipo>("alcoholemia")
-  const [desde, setDesde] = useState("")
-  const [hasta, setHasta] = useState("")
+  const [desde, setDesde] = useState(today)
+  const [hasta, setHasta] = useState(today)
   const [pending, start] = useTransition()
   const [working, setWorking] = useState<string | null>(null)
 
