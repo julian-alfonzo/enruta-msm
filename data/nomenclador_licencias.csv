@@ -1,0 +1,51 @@
+﻿motivo_original,codigo_licencia,descripcion_nomenclador,metodo
+Familiar Enfermo,3,familiar enfermo,fuzzy (100.0%)
+Familiar enfermo,3,familiar enfermo,fuzzy (100.0%)
+Enferma,4,ENFERMO,exacta
+Enfermo,4,ENFERMO,fuzzy (100.0%)
+AUSENTE SIN AVISO,6,ausente sin aviso,fuzzy (100.0%)
+Ausente,6,ausente sin aviso,exacta
+Ausente sin aviso,6,ausente sin aviso,fuzzy (100.0%)
+Dia x estudio,11,Estudio,exacta
+Estudio,11,Estudio,fuzzy (100.0%)
+Dia x Examen,12,Examen,exacta
+Dia x examen,12,Examen,exacta
+EXAMEN,12,Examen,fuzzy (100.0%)
+Examen,12,Examen,fuzzy (100.0%)
+FALLECIMIENTO,15,Fallecimiento,fuzzy (100.0%)
+Fallecimiento,15,Fallecimiento,fuzzy (100.0%)
+Citación Judicial,16,Citación Judicial,fuzzy (100.0%)
+Llegada tarde,21,llegada tarde hasta media hr,exacta
+Llegada tarde hasta media hora,21,llegada tarde hasta media hr,fuzzy (96.55172413793103%)
+Llegada tarde menos de 30 hora,21,llegada tarde hasta media hr,exacta
+ART,27,Accidente de trabajo,exacta
+Accidente de trabajo,27,Accidente de trabajo,fuzzy (100.0%)
+Ausente c/aviso,50,ausente con aviso,exacta
+Ausente con aviso,50,ausente con aviso,fuzzy (100.0%)
+LLEGADA TARDE MAS DE MEDIA HORA,63,llegada tarde mas de media hr,fuzzy (96.66666666666667%)
+Llegada tarde mas de 30 hora,63,llegada tarde mas de media hr,exacta
+Llegada tarde mas de media hora,63,llegada tarde mas de media hr,fuzzy (96.66666666666667%)
+Articulo,76,indole particular,exacta
+Asunto particular,76,indole particular,exacta
+Indole Particular,76,indole particular,exacta
+Indole particular,76,indole particular,exacta
+indole particular,76,indole particular,exacta
+citado por art,927,citado por art,exacta
+*,999,ignorado,ignorado
+CAMNBIO DE GUARDIA,999,ignorado,ignorado
+Cambio de Guardia,999,ignorado,ignorado
+Cambio de guardia,999,ignorado,ignorado
+FRANCO AUTORIZADO,999,ignorado,ignorado
+HORA EXTRAS,999,ignorado,ignorado
+HORAS EXTRAS,999,ignorado,ignorado
+Horas extras,999,ignorado,ignorado
+LICENCIA ANUAL,999,ignorado,ignorado
+Licencia Anual,999,ignorado,ignorado
+Licencia por maternidad,999,ignorado,ignorado
+Licencia por paternidad,999,ignorado,ignorado
+No le tomo la huella,999,ignorado,ignorado
+Se retiro 18.00 hs. enfermo,999,ignorado,ignorado
+Suspendida x 2 dias,999,ignorado,ignorado
+Suspendido,999,ignorado,ignorado
+Suspensión,999,ignorado,ignorado
+horas extras,999,ignorado,ignorado
