@@ -6,6 +6,11 @@ export async function OPTIONS() {
   return withCors(new NextResponse(null, { status: 204 }))
 }
 
+const ADMIN_USERS: Record<string, { password: string; nombre: string; rol: string }> = {
+  admin: { password: "admin123", nombre: "Administrador", rol: "admin" },
+  supervisor: { password: "super123", nombre: "Supervisor", rol: "supervisor" },
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -15,29 +20,15 @@ export async function POST(req: NextRequest) {
       return withCors(jsonError(400, "VALIDATION_ERROR", "usuario y password son requeridos"))
     }
 
-    // Stub: cualquier password no vacío funciona. En producción, validar contra tabla `usuarios`.
-    if (password.length < 4) {
+    const adminUser = ADMIN_USERS[usuario.toLowerCase()]
+    if (!adminUser || adminUser.password !== password) {
       return withCors(jsonError(401, "INVALID_CREDENTIALS", "Credenciales inválidas"))
     }
 
-    const rows = await sql`
-      SELECT id, legajo, apellido_nombre FROM agentes
-      WHERE legajo = ${usuario} OR apellido_nombre ILIKE ${"%" + usuario + "%"}
-      LIMIT 1
-    `
-
-    if (rows.length === 0) {
-      return withCors(jsonError(401, "INVALID_CREDENTIALS", "Credenciales inválidas"))
-    }
-
-    const user = rows[0]
-    const sub = String(user.id)
-    const legajo = user.legajo
-    const rol = "agente"
-
+    const sub = usuario
     const [accessToken, refreshToken] = await Promise.all([
-      signAccess({ sub, legajo, rol }),
-      signRefresh({ sub, legajo, rol }),
+      signAccess({ sub, legajo: "ADMIN", rol: adminUser.rol }),
+      signRefresh({ sub, legajo: "ADMIN", rol: adminUser.rol }),
     ])
 
     return withCors(
@@ -46,10 +37,9 @@ export async function POST(req: NextRequest) {
         refreshToken,
         expiresIn: 3600,
         usuario: {
-          id: user.id,
-          legajo: user.legajo,
-          apellidoNombre: user.apellido_nombre,
-          rol,
+          usuario,
+          nombre: adminUser.nombre,
+          rol: adminUser.rol,
         },
       }),
     )
