@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Users, Camera, MessageSquareWarning, FileBarChart, ChevronRight } from "lucide-react"
+import { Users, Camera, MessageSquareWarning, FileBarChart, ChevronRight, FileSpreadsheet } from "lucide-react"
 
 type Stats = {
   total: number
@@ -60,19 +60,29 @@ const accesos: Acceso[] = [
     color: "text-foreground",
     bg: "bg-muted",
     border: "hover:border-foreground",
-    stat: () => ({ value: 0, label: "por día" }),
+    stat: () => ({ value: 0, label: "PDF / Excel" }),
+  },
+  {
+    href: "/reportes-personal",
+    titulo: "Reportes de personal",
+    descripcion: "Subí un Excel mensual, generá partes semanales",
+    icon: FileSpreadsheet,
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "hover:border-primary",
+    stat: () => ({ value: 0, label: "Excel → Excel" }),
   },
 ]
 
 export function DashboardView({ stats }: { stats: Stats }) {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 lg:px-8">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground lg:text-3xl">Panel de Administración</h2>
         <p className="text-sm text-muted-foreground">Elegí una sección para empezar</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {accesos.map((a) => {
           const Icon = a.icon
           const s = a.stat(stats)
