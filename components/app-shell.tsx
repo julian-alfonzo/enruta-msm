@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Home, Users, FileBarChart, Camera, LogOut, Menu, MessageSquare } from "lucide-react"
+import { Home, LogOut, Menu } from "lucide-react"
 import { useSession } from "@/components/session-provider"
 import { cn } from "@/lib/utils"
 import {
@@ -17,10 +17,6 @@ import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/agentes", label: "Agentes", icon: Users },
-  { href: "/alcoholemia", label: "Alcoholemia", icon: Camera },
-  { href: "/observaciones", label: "Observaciones", icon: MessageSquare },
-  { href: "/reportes", label: "Reportes", icon: FileBarChart },
 ]
 
 const titles: Record<string, string> = {
@@ -29,6 +25,8 @@ const titles: Record<string, string> = {
   "/alcoholemia": "Control de Alcoholemia",
   "/observaciones": "Reclamos y Observaciones",
   "/reportes": "Reportes",
+  "/reportes-personal": "Reportes de personal",
+  "/reportes-personal/semanal": "Reporte Semanal",
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -58,56 +56,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-background lg:flex">
       {/* Sidebar (web) */}
-      <aside className="hidden w-64 flex-col bg-sidebar text-sidebar-foreground lg:flex">
-        <div className="flex items-center gap-3 px-6 py-6">
-          <img
-            src="/logo-san-miguel.jpeg"
-            alt="MSM"
-            className="h-10 w-10 rounded-full object-cover"
-          />
-          <div>
-            <p className="text-lg font-bold leading-none">EnRuta</p>
-            <p className="text-xs text-sidebar-foreground/80">MSM</p>
-          </div>
-        </div>
-        <nav className="flex flex-1 flex-col gap-1 px-3">
-          {navItems.map((item) => {
-            const active = pathname === item.href
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-        <div className="px-3 pb-6">
-          <div className="mb-2 rounded-xl bg-sidebar-accent px-4 py-3 text-xs">
-            <p className="font-semibold">Rol activo</p>
-            <p className="text-sidebar-foreground/90">{rol}</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium hover:bg-sidebar-accent"
-          >
-            <LogOut className="h-5 w-5" />
-            Cerrar sesión
-          </button>
-        </div>
+      <aside className="hidden w-20 flex-col items-center bg-sidebar py-6 text-sidebar-foreground lg:flex">
+        <Link
+          href="/"
+          title="Inicio"
+          className={cn(
+            "mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+            pathname === "/"
+              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent",
+          )}
+        >
+          <Home className="h-6 w-6" />
+        </Link>
+        <div className="flex flex-1" />
+        <button
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          className="flex h-12 w-12 items-center justify-center rounded-xl text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
       </aside>
 
       <div className="flex min-h-dvh flex-1 flex-col">
-        {/* Header */}
+        {/* Mobile header */}
         <header className="flex items-center justify-between bg-primary px-4 py-4 text-primary-foreground lg:hidden">
           <Sheet>
             <SheetTrigger className="rounded-md p-1">
@@ -142,9 +115,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
           <h1 className="text-lg font-semibold">{baseTitle}</h1>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-primary-foreground/70">
-            <Users className="h-5 w-5" />
-          </div>
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-primary-foreground/70"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
         </header>
 
         {/* Desktop top bar */}
@@ -157,29 +134,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 pb-20 lg:pb-0">{children}</main>
-
-        {/* Bottom nav (mobile) */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-card px-2 py-2 lg:hidden">
-          {navItems.map((item) => {
-            const active = pathname === item.href
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-xs font-medium",
-                  active ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <span className={cn("rounded-full px-4 py-1", active && "bg-accent")}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
       </div>
     </div>
   )
