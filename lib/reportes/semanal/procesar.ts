@@ -257,6 +257,91 @@ export function procesarParteSemanal(
   }
 }
 
+export function obtenerSemanas(diasDelMes: number): Array<[number, number]> {
+  const semanas: Array<[number, number]> = []
+  for (let inicio = 1; inicio <= diasDelMes; inicio += 7) {
+    const fin = Math.min(inicio + 6, diasDelMes)
+    semanas.push([inicio, fin])
+  }
+  return semanas
+}
+
+export type SemanaGenerada = {
+  nombreArchivo: string
+  buffer: ArrayBuffer
+  inicio: number
+  fin: number
+  totalRegistros: number
+}
+
+export async function generarTodasLasSemanas(
+  inputBuffer: ArrayBuffer,
+  inputFileName: string,
+): Promise<{
+  semanas: SemanaGenerada[]
+  mesStr: string
+  ano: number
+  contadorFuentes: Record<string, number>
+  motivosSinCoincidencia: string[]
+  totalRegistros: number
+}> {
+  const { mesStr, mesNum, ano } = extraerMesAno(inputFileName)
+  const registros = leerDatosFuente(inputBuffer, mesNum, ano)
+  const nomenclador = cargarNomenclador()
+
+  const contadorFuentes: Record<string, number> = { nomenclador: 0, manual: 0, validacion: 0, none: 0 }
+  const motivosSinCoincidencia = new Set<string>()
+  const registrosConCodigo: Registro[] = []
+
+  for (const reg of registros) {
+    const { codigo, fuente } = mapearLicencia(reg.motivo, nomenclador)
+    reg.codigo = codigo
+    reg.fuente_mapeo = fuente
+
+    if (codigo === CODIGO_IGNORADO) continue
+
+    if (codigo != null) {
+      const k = fuente ?? "none"
+      contadorFuentes[k] = (contadorFuentes[k] ?? 0) + 1
+    } else {
+      contadorFuentes.none = (contadorFuentes.none ?? 0) + 1
+      const motivoStr = reg.motivo ? String(reg.motivo).trim() : ""
+      if (motivoStr && motivoStr !== "None") motivosSinCoincidencia.add(motivoStr)
+    }
+
+    if (codigo === CODIGO_FLAG_927) reg.flag_927 = true
+    registrosConCodigo.push(reg)
+  }
+
+  const consolidadas = consolidarPorRango(registrosConCodigo)
+
+  const lastDay = new Date(ano, mesNum, 0).getDate()
+  const rangos = obtenerSemanas(lastDay)
+
+  const semanas: SemanaGenerada[] = []
+  let totalRegistros = 0
+  for (const [inicio, fin] of rangos) {
+    const diaInicio = new Date(Date.UTC(ano, mesNum - 1, inicio))
+    const diaFin = new Date(Date.UTC(ano, mesNum - 1, fin))
+    const entradasSemana = agruparPorSemana(diaInicio, diaFin, consolidadas)
+    if (entradasSemana.length === 0) continue
+
+    const nombreArchivo = `Parte Semanal del ${inicio} al ${fin} de ${mesStr}.xlsx`
+    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano }, nombreArchivo))
+    semanas.push({ nombreArchivo, buffer, inicio, fin, totalRegistros: entradasSemana.length })
+    totalRegistros += entradasSemana.length
+  }
+
+  return {
+    semanas,
+    mesStr,
+    ano,
+    contadorFuentes,
+    motivosSinCoincidencia: Array.from(motivosSinCoincidencia).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+    totalRegistros,
+  }
+}
+
 export function generarExcelSemanal(
   entradas: Entrada[],
   opciones: OpcionesProceso,

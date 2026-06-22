@@ -8,17 +8,23 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { VALIDACION } from "@/lib/reportes/semanal/validacion"
+import { cn } from "@/lib/utils"
 
 type Resultado = {
   registros: number
   motivosSinCoincidencia: string[]
   contadorFuentes: Record<string, number>
+  modo: "semana" | "mes"
+  totalArchivos?: number
 }
 
 const VALIDACION_ORDENADA = [...VALIDACION].sort((a, b) => a[0] - b[0])
 
+type Modo = "semana" | "mes"
+
 export function ReporteSemanalClient() {
   const [file, setFile] = useState<File | null>(null)
+  const [modo, setModo] = useState<Modo>("semana")
   const [inicio, setInicio] = useState(1)
   const [fin, setFin] = useState(7)
   const [pending, start] = useTransition()
@@ -44,8 +50,11 @@ export function ReporteSemanalClient() {
       try {
         const fd = new FormData()
         fd.append("fuente", file)
-        fd.append("inicioSemana", String(inicio))
-        fd.append("finSemana", String(fin))
+        fd.append("modo", modo)
+        if (modo === "semana") {
+          fd.append("inicioSemana", String(inicio))
+          fd.append("finSemana", String(fin))
+        }
 
         const res = await fetch("/api/reportes/semanal", { method: "POST", body: fd })
         if (!res.ok) {
@@ -58,6 +67,7 @@ export function ReporteSemanalClient() {
                 registros: 0,
                 motivosSinCoincidencia: j.motivosSinCoincidencia,
                 contadorFuentes: j.contadorFuentes,
+                modo,
               })
             }
           } catch {
@@ -75,11 +85,15 @@ export function ReporteSemanalClient() {
         const motivosHeader = res.headers.get("X-Motivos-Sin-Coincidencia")
         const contadorHeader = res.headers.get("X-Contador-Fuentes")
         const totalHeader = res.headers.get("X-Total-Registros")
+        const totalArchivosHeader = res.headers.get("X-Total-Archivos")
+        const modoHeader = (res.headers.get("X-Modo") as "semana" | "mes") || "semana"
 
         setResultado({
           registros: Number(totalHeader ?? 0),
           motivosSinCoincidencia: [],
           contadorFuentes: contadorHeader ? JSON.parse(contadorHeader) : {},
+          modo: modoHeader,
+          totalArchivos: totalArchivosHeader ? Number(totalArchivosHeader) : undefined,
         })
 
         if (downloadUrl) URL.revokeObjectURL(downloadUrl)
@@ -193,6 +207,7 @@ export function ReporteSemanalClient() {
                 setFile(f)
                 reset()
                 setError(null)
+                setModo("semana")
               }}
               className="rounded-xl file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground"
             />
@@ -203,36 +218,71 @@ export function ReporteSemanalClient() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block text-sm">Día inicio de la semana</Label>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={inicio}
-                onChange={(e) => {
-                  setInicio(Number(e.target.value))
-                  reset()
-                }}
-                className="rounded-xl"
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm">Día fin de la semana</Label>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={fin}
-                onChange={(e) => {
-                  setFin(Number(e.target.value))
-                  reset()
-                }}
-                className="rounded-xl"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setModo("semana"); reset() }}
+              className={cn(
+                "rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors",
+                modo === "semana"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/50"
+              )}
+            >
+              Una semana
+            </button>
+            <button
+              type="button"
+              onClick={() => { setModo("mes"); reset() }}
+              className={cn(
+                "rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors",
+                modo === "mes"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/50"
+              )}
+            >
+              Todo el mes
+            </button>
           </div>
+
+          {modo === "semana" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block text-sm">Día inicio</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={inicio}
+                  onChange={(e) => {
+                    setInicio(Number(e.target.value))
+                    reset()
+                  }}
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm">Día fin</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={fin}
+                  onChange={(e) => {
+                    setFin(Number(e.target.value))
+                    reset()
+                  }}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+
+          {modo === "mes" && (
+            <p className="rounded-xl bg-accent/50 p-3 text-xs text-muted-foreground">
+              Se generarán los partes de todas las semanas del mes detectado (1-7, 8-14, 15-21, 22-28, 29-fin), agrupados en un archivo .zip.
+            </p>
+          )}
 
           {error && (
             <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
@@ -248,7 +298,8 @@ export function ReporteSemanalClient() {
               </>
             ) : (
               <>
-                <Upload className="mr-2 h-4 w-4" /> Procesar y generar parte
+                <Upload className="mr-2 h-4 w-4" />
+                {modo === "mes" ? "Procesar todo el mes" : "Procesar y generar parte"}
               </>
             )}
           </Button>
@@ -260,7 +311,9 @@ export function ReporteSemanalClient() {
           <CardHeader>
             <CardTitle className="text-base">Resultado</CardTitle>
             <CardDescription>
-              {resultado.registros} entrada(s) generada(s) en el parte semanal.
+              {resultado.modo === "mes" && resultado.totalArchivos
+                ? `${resultado.totalArchivos} archivo(s) generado(s), ${resultado.registros} entrada(s) en total.`
+                : `${resultado.registros} entrada(s) generada(s) en el parte semanal.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
