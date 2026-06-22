@@ -113,6 +113,35 @@ export function ReporteSemanalClient() {
         </p>
       </div>
 
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Código de colores del Excel de salida</CardTitle>
+          <CardDescription>
+            Las celdas de la columna <strong>Licencia</strong> se pintan según el estado del registro.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-destructive" />
+            <div>
+              <p className="font-semibold text-foreground">Rojo · VACIO</p>
+              <p className="text-xs text-muted-foreground">
+                Motivo no reconocido o excluido (no se pudo mapear a un código de licencia).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-yellow-300" />
+            <div>
+              <p className="font-semibold text-foreground">Amarillo · Revisar</p>
+              <p className="text-xs text-muted-foreground">
+                Código 4 o 27 con más de un registro del mismo legajo, o código 927 (citado por art).
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
