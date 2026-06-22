@@ -13,3 +13,9 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
+# Generated CSV from excel-to-csv.ts
+alcoholemia_import.csv

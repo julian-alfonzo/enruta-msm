@@ -1,0 +1,20 @@
+{
+  "controls": [
+    {
+      "agente_id": 123,
+      "resultado": "NEGATIVO",
+      "graduacion": null,
+      "servicio_extra": "PATRULLAS T.T",
+      "observacion": null,
+      "fecha": "2026-05-15"
+    },
+    {
+      "agente_id": 456,
+      "resultado": "POSITIVO",
+      "graduacion": 0.55,
+      "servicio_extra": "DESTACAMENTO DEFENSA T.N",
+      "observacion": "Segunda prueba confirmatoria",
+      "fecha": "2026-05-15"
+    }
+  ]
+}

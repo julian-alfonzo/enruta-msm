@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 type ReporteTipo = "alcoholemia" | "agentes"
 
 function fmt(iso: string) {
+  if (!iso) return ""
   return new Date(iso).toLocaleString("es-AR", {
     day: "2-digit",
     month: "2-digit",
@@ -50,14 +51,14 @@ export function ReportesView() {
         const data = (await fetchReporteControles(desde || undefined, hasta || undefined)) as any[]
         autoTable(doc, {
           startY: 42,
-          head: [["Agente", "Legajo", "Resultado", "Valor", "Servicio", "Fecha"]],
+          head: [["Agente", "Legajo", "Resultado", "Graduación", "Servicio", "Fecha"]],
           body: data.map((c) => [
-            c.nombre,
+            c.apellido_nombre,
             c.legajo,
             c.resultado,
-            c.valor != null ? `${Number(c.valor).toFixed(2)} g/L` : "-",
-            c.tipo_servicio,
-            fmt(c.fecha_control),
+            c.graduacion != null ? `${Number(c.graduacion).toFixed(2)} g/L` : "-",
+            c.servicio_extra ?? "-",
+            fmt(c.fecha),
           ]),
           headStyles: { fillColor: [79, 195, 247] },
           styles: { fontSize: 8 },
@@ -66,14 +67,14 @@ export function ReportesView() {
         const data = (await fetchReporteAgentes()) as any[]
         autoTable(doc, {
           startY: 42,
-          head: [["Nombre", "Legajo", "Tipo", "Estado", "Hs. Mens.", "Hs. Extra"]],
+          head: [["Apellido y nombre", "Legajo", "Dependencia", "Cargo", "Turno", "F. Ingreso"]],
           body: data.map((a) => [
-            a.nombre,
+            a.apellido_nombre,
             a.legajo,
-            a.tipo ?? "-",
-            a.activo ? "Activo" : "Inactivo",
-            a.horas_mensuales,
-            a.horas_extra,
+            a.dependencia ?? "-",
+            a.cargo ?? "-",
+            a.turno ?? "-",
+            a.fecha_ingreso ?? "-",
           ]),
           headStyles: { fillColor: [79, 195, 247] },
           styles: { fontSize: 8 },
@@ -95,27 +96,25 @@ export function ReportesView() {
       if (tipo === "alcoholemia") {
         const data = (await fetchReporteControles(desde || undefined, hasta || undefined)) as any[]
         rows = data.map((c) => ({
-          Agente: c.nombre,
+          Agente: c.apellido_nombre,
           Legajo: c.legajo,
           Dependencia: c.dependencia ?? "",
           Resultado: c.resultado,
-          "Valor (g/L)": c.valor != null ? Number(c.valor) : "",
-          Servicio: c.tipo_servicio,
-          Fecha: fmt(c.fecha_control),
-          Observaciones: c.observaciones ?? "",
+          "Graduación (g/L)": c.graduacion != null ? Number(c.graduacion) : "",
+          "Servicio extra": c.servicio_extra ?? "",
+          Fecha: fmt(c.fecha),
+          Observación: c.observacion ?? "",
         }))
         sheetName = "Alcoholemia"
       } else {
         const data = (await fetchReporteAgentes()) as any[]
         rows = data.map((a) => ({
-          Nombre: a.nombre,
+          "Apellido y nombre": a.apellido_nombre,
           Legajo: a.legajo,
-          DNI: a.dni ?? "",
-          Tipo: a.tipo ?? "",
+          "F. Ingreso": a.fecha_ingreso ?? "",
           Dependencia: a.dependencia ?? "",
-          Estado: a.activo ? "Activo" : "Inactivo",
-          "Horas Mensuales": a.horas_mensuales,
-          "Horas Extra": a.horas_extra,
+          Cargo: a.cargo ?? "",
+          Turno: a.turno ?? "",
         }))
         sheetName = "Agentes"
       }

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Pencil, Trash2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
-import type { Agente, Control } from "@/lib/db"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
+import type { Agente, ControlAlcoholemia } from "@/lib/db"
 import {
   getAgentesConControl,
   getControlesByAgente,
@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils"
 
 type AgenteControl = Agente & {
-  ultimo_control: { resultado: string; valor: number | null; fecha_control: string } | null
+  ultimo_control: { resultado: string; graduacion: number | null; fecha: string } | null
 }
 
 type Stats = { total: number; con_control: number; positivos: number; negativos: number }
@@ -70,7 +70,7 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
             setSearch(e.target.value)
             refresh(e.target.value)
           }}
-          placeholder="Buscar por nombre o legajo"
+          placeholder="Buscar por apellido y nombre o legajo"
           className="rounded-xl pl-10"
         />
       </div>
@@ -93,10 +93,10 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
               onClick={() => setDetalle(a)}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary"
             >
-              {initials(a.nombre)}
+              {initials(a.apellido_nombre)}
             </button>
             <button onClick={() => setDetalle(a)} className="min-w-0 flex-1 text-left">
-              <p className="truncate font-semibold text-foreground">{a.nombre}</p>
+              <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
               <p className="truncate text-xs text-muted-foreground">
                 Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}
               </p>
@@ -110,7 +110,7 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
                   )}
                 >
                   {a.ultimo_control.resultado}
-                  {a.ultimo_control.valor != null && ` (${Number(a.ultimo_control.valor).toFixed(2)}g/L)`}
+                  {a.ultimo_control.graduacion != null && ` (${Number(a.ultimo_control.graduacion).toFixed(2)}g/L)`}
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">Sin control</span>
@@ -160,9 +160,9 @@ function NuevoControlDialog({
 }) {
   const [pending, start] = useTransition()
   const [resultado, setResultado] = useState<"POSITIVO" | "NEGATIVO" | "">("")
-  const [tipoServicio, setTipoServicio] = useState("Servicio Ordinario")
-  const [valor, setValor] = useState("")
-  const [obs, setObs] = useState("")
+  const [servicioExtra, setServicioExtra] = useState("Servicio Ordinario")
+  const [graduacion, setGraduacion] = useState("")
+  const [observacion, setObservacion] = useState("")
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
 
   function submit() {
@@ -171,10 +171,10 @@ function NuevoControlDialog({
       await createControl({
         agente_id: agente.id,
         resultado,
-        valor: valor ? Number(valor) : resultado === "NEGATIVO" ? 0 : undefined,
-        tipo_servicio: tipoServicio,
-        observaciones: obs || undefined,
-        fecha_control: new Date(fecha).toISOString(),
+        graduacion: graduacion ? Number(graduacion) : undefined,
+        servicio_extra: servicioExtra || undefined,
+        observacion: observacion || undefined,
+        fecha: new Date(fecha).toISOString(),
       })
       onDone()
       onClose()
@@ -189,7 +189,7 @@ function NuevoControlDialog({
         </DialogHeader>
 
         <div className="rounded-xl bg-accent p-3">
-          <p className="font-bold text-foreground">{agente.nombre}</p>
+          <p className="font-bold text-foreground">{agente.apellido_nombre}</p>
           <p className="text-xs text-muted-foreground">Legajo: {agente.legajo}</p>
           <p className="text-xs text-primary">{agente.dependencia}</p>
         </div>
@@ -226,12 +226,12 @@ function NuevoControlDialog({
 
           {resultado === "POSITIVO" && (
             <div>
-              <Label className="mb-1.5 block text-sm font-semibold">Valor (g/L)</Label>
+              <Label className="mb-1.5 block text-sm font-semibold">Graduación (g/L)</Label>
               <Input
                 type="number"
                 step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                value={graduacion}
+                onChange={(e) => setGraduacion(e.target.value)}
                 placeholder="0.24"
                 className="rounded-xl"
               />
@@ -239,15 +239,15 @@ function NuevoControlDialog({
           )}
 
           <div>
-            <Label className="mb-1.5 block text-sm font-semibold">Tipo de servicio</Label>
+            <Label className="mb-1.5 block text-sm font-semibold">Servicio extra</Label>
             <div className="grid grid-cols-2 gap-2">
               {["Servicio Ordinario", "Horas Extra"].map((t) => (
                 <button
                   key={t}
-                  onClick={() => setTipoServicio(t)}
+                  onClick={() => setServicioExtra(t)}
                   className={cn(
                     "rounded-xl py-3 text-sm font-semibold transition-colors",
-                    tipoServicio === t ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
+                    servicioExtra === t ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {t}
@@ -257,9 +257,9 @@ function NuevoControlDialog({
           </div>
 
           <Textarea
-            value={obs}
-            onChange={(e) => setObs(e.target.value)}
-            placeholder="Observaciones (opcional)"
+            value={observacion}
+            onChange={(e) => setObservacion(e.target.value)}
+            placeholder="Observación (opcional)"
             className="rounded-xl"
           />
         </div>
@@ -288,12 +288,12 @@ function DetalleAgenteDialog({
   onNuevo: () => void
   onChanged: () => void
 }) {
-  const [controles, setControles] = useState<Control[] | null>(null)
+  const [controles, setControles] = useState<ControlAlcoholemia[] | null>(null)
   const [, start] = useTransition()
 
   if (controles === null) {
     start(async () => {
-      const data = (await getControlesByAgente(agente.id)) as Control[]
+      const data = (await getControlesByAgente(agente.id)) as ControlAlcoholemia[]
       setControles(data)
     })
   }
@@ -301,7 +301,7 @@ function DetalleAgenteDialog({
   function eliminar(id: number) {
     start(async () => {
       await deleteControl(id)
-      const data = (await getControlesByAgente(agente.id)) as Control[]
+      const data = (await getControlesByAgente(agente.id)) as ControlAlcoholemia[]
       setControles(data)
       onChanged()
     })
@@ -315,7 +315,7 @@ function DetalleAgenteDialog({
             <button onClick={onClose} aria-label="Volver">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            {agente.nombre}
+            {agente.apellido_nombre}
           </DialogTitle>
         </DialogHeader>
 
@@ -346,12 +346,12 @@ function DetalleAgenteDialog({
                   <span className={c.resultado === "POSITIVO" ? "text-chart-2" : "text-destructive"}>
                     {c.resultado}
                   </span>{" "}
-                  {c.valor != null && (
-                    <span className="text-foreground">({Number(c.valor).toFixed(2)}g/L)</span>
+                  {c.graduacion != null && (
+                    <span className="text-foreground">({Number(c.graduacion).toFixed(2)}g/L)</span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">{fmtFecha(c.fecha_control)}</p>
-                <p className="text-xs text-primary">{c.tipo_servicio}</p>
+                <p className="text-xs text-muted-foreground">{fmtFecha(c.fecha)}</p>
+                <p className="text-xs text-primary">{c.servicio_extra}</p>
               </div>
               <button
                 onClick={() => eliminar(c.id)}

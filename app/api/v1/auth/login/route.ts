@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const legajo = body.legajo ?? body.username;
-    const password = body.password ?? body.pin;
 
     if (!legajo) {
       return NextResponse.json(
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const rows = await sql`
-      SELECT id, nombre, legajo, tipo, dependencia
+      SELECT id, legajo, apellido_nombre, dependencia, cargo, turno
       FROM agentes
       WHERE legajo = ${legajo}
       LIMIT 1
@@ -30,17 +29,8 @@ export async function POST(request: NextRequest) {
 
     const user = rows[0];
 
-    const rolMap: Record<string, string> = {
-      Caminadora: "CAMINADORA",
-      Moto: "MOTO",
-      "Tránsito": "TRANSITO",
-      "Patrulla de Moto": "PATRULLA",
-      Supervisor: "SUPERVISOR",
-      Administrador: "ADMIN",
-    };
-
     const token = Buffer.from(
-      JSON.stringify({ id: user.id, legajo: user.legajo, rol: user.tipo, ts: Date.now() }),
+      JSON.stringify({ id: user.id, legajo: user.legajo, ts: Date.now() }),
     ).toString("base64");
 
     return NextResponse.json({
@@ -52,10 +42,13 @@ export async function POST(request: NextRequest) {
         refresh_token: token + "_refresh",
         usuario: {
           id: user.id,
-          nombre: user.nombre,
-          email: `${user.legajo}@msm.gob.ar`,
-          rol: rolMap[user.tipo] ?? user.tipo ?? "AGENTE",
           legajo: user.legajo,
+          apellido_nombre: user.apellido_nombre,
+          dependencia: user.dependencia,
+          cargo: user.cargo,
+          turno: user.turno,
+          email: `${user.legajo}@msm.gob.ar`,
+          rol: "AGENTE",
           municipalidad: "Municipalidad de San Miguel",
         },
       },

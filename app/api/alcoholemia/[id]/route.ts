@@ -1,42 +1,33 @@
 import { sql } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
-function toTimestamp(iso: string | Date | null): number | null {
-  if (!iso) return null;
-  return new Date(iso).getTime();
-}
-
-function toIso(timestamp: number | null | undefined): string | null {
-  if (timestamp == null) return null;
-  return new Date(timestamp).toISOString();
-}
-
 function mapRowToDTO(row: any) {
   return {
     id: row.id,
+    agente_id: row.agente_id,
     legajo: row.legajo ?? "",
-    nombre: row.nombre ?? "",
+    apellido_nombre: row.apellido_nombre ?? "",
     dependencia: row.dependencia ?? null,
     cargo: row.cargo ?? null,
     turno: row.turno ?? null,
-    fecha: toTimestamp(row.fecha_control),
+    fecha: row.fecha,
     resultado: row.resultado,
-    graduacion: row.valor ?? null,
-    quienTestea: row.quien_testea ?? "",
-    observaciones: row.observaciones ?? null,
-    createdAt: toTimestamp(row.created_at),
+    graduacion: row.graduacion != null ? Number(row.graduacion) : null,
+    servicio_extra: row.servicio_extra ?? null,
+    observacion: row.observacion ?? null,
+    created_at: row.created_at,
   };
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const rows = await sql`
-      SELECT c.*, a.nombre, a.legajo, a.dependencia, a.cargo
-      FROM alcoholemia_controles c
+      SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia, a.cargo, a.turno
+      FROM controles_alcoholemia c
       JOIN agentes a ON a.id = c.agente_id
       WHERE c.id = ${Number(id)}
     `;
@@ -61,8 +52,8 @@ export async function PUT(
     const numericId = Number(id);
 
     const existing = await sql`
-      SELECT c.*, a.nombre, a.legajo, a.dependencia, a.cargo
-      FROM alcoholemia_controles c
+      SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia, a.cargo, a.turno
+      FROM controles_alcoholemia c
       JOIN agentes a ON a.id = c.agente_id
       WHERE c.id = ${numericId}
     `;
@@ -72,43 +63,30 @@ export async function PUT(
     }
 
     const updated = await sql`
-      UPDATE alcoholemia_controles SET
+      UPDATE controles_alcoholemia SET
         resultado = COALESCE(${body.resultado ?? null}, resultado),
-        valor = COALESCE(${body.graduacion ?? null}, valor),
-        quien_testea = COALESCE(${body.quienTestea ?? null}, quien_testea),
-        observaciones = COALESCE(${body.observaciones ?? null}, observaciones)
+        graduacion = COALESCE(${body.graduacion ?? null}, graduacion),
+        servicio_extra = COALESCE(${body.servicio_extra ?? null}, servicio_extra),
+        observacion = COALESCE(${body.observacion ?? null}, observacion)
       WHERE id = ${numericId}
-      RETURNING id, created_at, fecha_control, resultado, valor, observaciones, turno, quien_testea, legajo
+      RETURNING *
     `;
 
-    const row = updated[0];
-    const agente = await sql`
-      SELECT nombre, legajo, dependencia, cargo FROM agentes WHERE id = ${row.agente_id ?? existing[0].agente_id}
-    `;
-
-    const dto = {
-      id: row.id,
-      legajo: row.legajo ?? agente[0]?.legajo ?? "",
-      nombre: agente[0]?.nombre ?? "",
-      dependencia: agente[0]?.dependencia ?? null,
-      cargo: agente[0]?.cargo ?? null,
-      turno: row.turno ?? null,
-      fecha: toTimestamp(row.fecha_control),
-      resultado: row.resultado,
-      graduacion: row.valor ?? null,
-      quienTestea: row.quien_testea ?? "",
-      observaciones: row.observaciones ?? null,
-      createdAt: toTimestamp(row.created_at),
-    };
-
-    return NextResponse.json(dto);
+    return NextResponse.json({
+      ...mapRowToDTO(updated[0]),
+      legajo: existing[0].legajo,
+      apellido_nombre: existing[0].apellido_nombre,
+      dependencia: existing[0].dependencia,
+      cargo: existing[0].cargo,
+      turno: existing[0].turno,
+    });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -116,14 +94,14 @@ export async function DELETE(
     const numericId = Number(id);
 
     const existing = await sql`
-      SELECT id FROM alcoholemia_controles WHERE id = ${numericId}
+      SELECT id FROM controles_alcoholemia WHERE id = ${numericId}
     `;
 
     if (existing.length === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await sql`DELETE FROM alcoholemia_controles WHERE id = ${numericId}`;
+    await sql`DELETE FROM controles_alcoholemia WHERE id = ${numericId}`;
 
     return NextResponse.json({
       status: "success",

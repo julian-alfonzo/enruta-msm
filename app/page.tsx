@@ -6,12 +6,12 @@ export const dynamic = "force-dynamic"
 
 export default async function Page() {
   const stats = await getDashboardStats()
-  const agentes = await getAgentes()
-  const disponibles = (agentes as any[]).filter((a) => a.activo && a.en_servicio)
+  const agentes = (await getAgentes()) as any[]
+  const disponibles = agentes.slice(0, 8)
 
   return (
     <AppShell>
-      <DashboardView stats={stats} disponibles={disponibles} />
+      <DashboardView stats={stats as any} disponibles={disponibles} />
     </AppShell>
   )
 }

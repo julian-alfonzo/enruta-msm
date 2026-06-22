@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     if (!desde || !hasta) {
       return NextResponse.json(
-        { error: "Query params 'desde' and 'hasta' are required (milliseconds epoch)" },
+        { error: "Query params 'desde' and 'hasta' are required (ISO date strings)" },
         { status: 400 },
       );
     }
@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
         COUNT(*)::int AS "totalTests",
         COUNT(*) FILTER (WHERE resultado = 'POSITIVO')::int AS "totalPositivos",
         COUNT(*) FILTER (WHERE resultado = 'NEGATIVO')::int AS "totalNegativos"
-      FROM alcoholemia_controles
-      WHERE fecha_control >= ${desdeDate} AND fecha_control <= ${hastaDate}
+      FROM controles_alcoholemia
+      WHERE fecha >= ${desdeDate} AND fecha <= ${hastaDate}
     `;
 
     const stats = rows[0];

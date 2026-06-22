@@ -18,37 +18,33 @@ export function sql(strings: TemplateStringsArray, ...values: any[]) {
 
 export type Agente = {
   id: number
-  nombre: string
   legajo: string
-  dni: string | null
-  telefono: string | null
+  apellido_nombre: string
+  fecha_ingreso: string | null
   dependencia: string | null
   cargo: string | null
-  tipo: string | null
-  activo: boolean
-  en_servicio: boolean
-  horas_mensuales: number
-  horas_extra: number
+  turno: string | null
   created_at: string
+  updated_at: string | null
 }
 
-export type Control = {
+export type ControlAlcoholemia = {
   id: number
   agente_id: number
-  resultado: string
-  valor: number | null
-  tipo_servicio: string
-  observaciones: string | null
-  fecha_control: string
+  fecha: string
+  resultado: "POSITIVO" | "NEGATIVO"
+  graduacion: number | null
+  servicio_extra: string | null
+  observacion: string | null
   created_at: string
 }
 
-export type Observacion = {
+export type ObservacionReclamo = {
   id: number
   agente_id: number
   tipo: "FALTA" | "RECLAMO" | "NOVEDAD"
   descripcion: string
-  estado: "ABIERTO" | "CERRADO"
   fecha: string
+  resuelto: boolean
   created_at: string
 }

@@ -9,8 +9,6 @@ import {
   XCircle,
   AlertTriangle,
   Info,
-  ChevronDown,
-  X,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,7 +35,7 @@ import {
   getAgentesForObservacion,
   getObservacionesStats,
   createObservacion,
-  toggleObservacionEstado,
+  toggleObservacionResuelto,
   deleteObservacion,
 } from "@/app/actions/observaciones"
 
@@ -46,16 +44,16 @@ type ObservacionRow = {
   agente_id: number
   tipo: "FALTA" | "RECLAMO" | "NOVEDAD"
   descripcion: string
-  estado: "ABIERTO" | "CERRADO"
+  resuelto: boolean
   fecha: string
-  agente_nombre: string
+  agente_apellido_nombre: string
   agente_legajo: string
 }
 
 type Stats = {
   total: number
-  abiertos: number
-  cerrados: number
+  abiertas: number
+  resueltas: number
   faltas: number
   reclamos: number
   novedades: number
@@ -92,7 +90,7 @@ export function ObservacionesView({
   const [observaciones, setObservaciones] = useState(initialObservaciones)
   const [search, setSearch] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("Todos")
-  const [filtroEstado, setFiltroEstado] = useState("Todos")
+  const [filtroResuelto, setFiltroResuelto] = useState("Todos")
   const [, startTransition] = useTransition()
   const [nuevo, setNuevo] = useState(false)
 
@@ -101,7 +99,7 @@ export function ObservacionesView({
       const data = (await getObservaciones(
         search,
         filtroTipo,
-        filtroEstado
+        filtroResuelto,
       )) as ObservacionRow[]
       setObservaciones(data)
     })
@@ -113,31 +111,33 @@ export function ObservacionesView({
       const data = (await getObservaciones(
         value,
         filtroTipo,
-        filtroEstado
+        filtroResuelto,
       )) as ObservacionRow[]
       setObservaciones(data)
     })
   }
 
-  function handleTipoChange(value: string) {
-    setFiltroTipo(value)
+  function handleTipoChange(value: string | null) {
+    const v = value ?? "Todos"
+    setFiltroTipo(v)
     startTransition(async () => {
       const data = (await getObservaciones(
         search,
-        value,
-        filtroEstado
+        v,
+        filtroResuelto,
       )) as ObservacionRow[]
       setObservaciones(data)
     })
   }
 
-  function handleEstadoChange(value: string) {
-    setFiltroEstado(value)
+  function handleResueltoChange(value: string | null) {
+    const v = value ?? "Todos"
+    setFiltroResuelto(v)
     startTransition(async () => {
       const data = (await getObservaciones(
         search,
         filtroTipo,
-        value
+        v,
       )) as ObservacionRow[]
       setObservaciones(data)
     })
@@ -145,8 +145,8 @@ export function ObservacionesView({
 
   const cards = [
     { label: "Total", value: stats.total, color: "text-primary" },
-    { label: "Abiertos", value: stats.abiertos, color: "text-chart-2" },
-    { label: "Cerrados", value: stats.cerrados, color: "text-muted-foreground" },
+    { label: "Abiertas", value: stats.abiertas, color: "text-chart-2" },
+    { label: "Resueltas", value: stats.resueltas, color: "text-muted-foreground" },
     { label: "Faltas", value: stats.faltas, color: "text-destructive" },
     { label: "Reclamos", value: stats.reclamos, color: "text-chart-2" },
     { label: "Novedades", value: stats.novedades, color: "text-primary" },
@@ -196,14 +196,14 @@ export function ObservacionesView({
             <SelectItem value="NOVEDAD">Novedad</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filtroEstado} onValueChange={handleEstadoChange}>
+        <Select value={filtroResuelto} onValueChange={handleResueltoChange}>
           <SelectTrigger className="w-full lg:w-40 rounded-xl">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos</SelectItem>
-            <SelectItem value="ABIERTO">Abiertos</SelectItem>
-            <SelectItem value="CERRADO">Cerrados</SelectItem>
+            <SelectItem value="false">Abiertas</SelectItem>
+            <SelectItem value="true">Resueltas</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -226,13 +226,13 @@ export function ObservacionesView({
               key={obs.id}
               className={cn(
                 "flex items-start gap-3 rounded-xl bg-card p-4 shadow-sm ring-1 ring-border",
-                obs.estado === "CERRADO" && "opacity-60"
+                obs.resuelto && "opacity-60",
               )}
             >
               <div
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                  config.bg
+                  config.bg,
                 )}
               >
                 <Icon className={cn("h-5 w-5", config.color)} />
@@ -246,7 +246,7 @@ export function ObservacionesView({
                         ? "bg-destructive/10 text-destructive"
                         : obs.tipo === "RECLAMO"
                           ? "bg-chart-2/10 text-chart-2"
-                          : "bg-primary/10 text-primary"
+                          : "bg-primary/10 text-primary",
                     )}
                   >
                     {obs.tipo}
@@ -254,16 +254,16 @@ export function ObservacionesView({
                   <span
                     className={cn(
                       "rounded px-2 py-0.5 text-xs font-bold",
-                      obs.estado === "ABIERTO"
-                        ? "bg-chart-2/10 text-chart-2"
-                        : "bg-muted text-muted-foreground"
+                      obs.resuelto
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-chart-2/10 text-chart-2",
                     )}
                   >
-                    {obs.estado}
+                    {obs.resuelto ? "RESUELTA" : "ABIERTA"}
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-semibold text-foreground">
-                  {obs.agente_nombre}
+                  {obs.agente_apellido_nombre}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Leg: {obs.agente_legajo} · {fmtFecha(obs.fecha)}
@@ -271,16 +271,16 @@ export function ObservacionesView({
                 <p className="mt-2 text-sm text-foreground">{obs.descripcion}</p>
               </div>
               <div className="flex flex-col gap-1">
-                {obs.estado === "ABIERTO" ? (
+                {!obs.resuelto ? (
                   <button
                     onClick={() => {
                       startTransition(async () => {
-                        await toggleObservacionEstado(obs.id, "CERRADO")
+                        await toggleObservacionResuelto(obs.id, true)
                         refresh()
                       })
                     }}
                     className="rounded-lg p-2 text-chart-2 hover:bg-chart-2/10"
-                    title="Cerrar observación"
+                    title="Marcar como resuelta"
                   >
                     <CheckCircle2 className="h-5 w-5" />
                   </button>
@@ -288,7 +288,7 @@ export function ObservacionesView({
                   <button
                     onClick={() => {
                       startTransition(async () => {
-                        await toggleObservacionEstado(obs.id, "ABIERTO")
+                        await toggleObservacionResuelto(obs.id, false)
                         refresh()
                       })
                     }}
@@ -383,7 +383,7 @@ function NuevaObservacionDialog({
               <SelectContent>
                 {agentes?.map((a) => (
                   <SelectItem key={a.id} value={a.id.toString()}>
-                    {a.nombre} (Leg: {a.legajo})
+                    {a.apellido_nombre} (Leg: {a.legajo})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -414,7 +414,7 @@ function NuevaObservacionDialog({
                       "flex flex-col items-center gap-1 rounded-xl py-3 text-xs font-semibold transition-colors",
                       tipo === t
                         ? `${config.bg} ${config.color}`
-                        : "bg-muted text-muted-foreground"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
                     <Icon className="h-5 w-5" />

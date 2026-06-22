@@ -3,26 +3,18 @@
 import { sql } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-export async function getAgentes(search = "", tipo = "") {
-  if (search && tipo && tipo !== "Todos los tipos") {
-    return sql`
-      SELECT * FROM agentes
-      WHERE (nombre ILIKE ${"%" + search + "%"} OR legajo ILIKE ${"%" + search + "%"} OR dni ILIKE ${"%" + search + "%"})
-      AND tipo = ${tipo}
-      ORDER BY nombre ASC
-    `
-  }
+export async function getAgentes(search = "") {
   if (search) {
+    const like = "%" + search + "%"
     return sql`
       SELECT * FROM agentes
-      WHERE nombre ILIKE ${"%" + search + "%"} OR legajo ILIKE ${"%" + search + "%"} OR dni ILIKE ${"%" + search + "%"}
-      ORDER BY nombre ASC
+      WHERE apellido_nombre ILIKE ${like}
+        OR legajo ILIKE ${like}
+        OR dependencia ILIKE ${like}
+      ORDER BY apellido_nombre ASC
     `
   }
-  if (tipo && tipo !== "Todos los tipos") {
-    return sql`SELECT * FROM agentes WHERE tipo = ${tipo} ORDER BY nombre ASC`
-  }
-  return sql`SELECT * FROM agentes ORDER BY nombre ASC`
+  return sql`SELECT * FROM agentes ORDER BY apellido_nombre ASC`
 }
 
 export async function getAgenteById(id: number) {
@@ -33,27 +25,26 @@ export async function getAgenteById(id: number) {
 export async function getDashboardStats() {
   const rows = await sql`
     SELECT
-      COUNT(*) FILTER (WHERE activo) AS activos,
-      COUNT(*) FILTER (WHERE en_servicio) AS en_servicio,
-      COUNT(*) FILTER (WHERE NOT activo) AS inactivos,
-      COUNT(*) AS total
-    FROM agentes
+      (SELECT COUNT(*) FROM agentes) AS total,
+      (SELECT COUNT(*) FROM controles_alcoholemia) AS total_controles,
+      (SELECT COUNT(*) FROM controles_alcoholemia WHERE resultado = 'POSITIVO') AS positivos,
+      (SELECT COUNT(*) FROM controles_alcoholemia WHERE resultado = 'NEGATIVO') AS negativos,
+      (SELECT COUNT(*) FROM observaciones_reclamos WHERE NOT resuelto) AS observaciones_abiertas
   `
   return rows[0]
 }
 
 export async function createAgente(data: {
-  nombre: string
-  dni: string
   legajo: string
-  telefono?: string
-  tipo: string
+  apellido_nombre: string
+  fecha_ingreso?: string
   dependencia?: string
   cargo?: string
+  turno?: string
 }) {
   await sql`
-    INSERT INTO agentes (nombre, dni, legajo, telefono, tipo, dependencia, cargo)
-    VALUES (${data.nombre}, ${data.dni}, ${data.legajo}, ${data.telefono ?? null}, ${data.tipo}, ${data.dependencia ?? null}, ${data.cargo ?? null})
+    INSERT INTO agentes (legajo, apellido_nombre, fecha_ingreso, dependencia, cargo, turno)
+    VALUES (${data.legajo}, ${data.apellido_nombre}, ${data.fecha_ingreso ?? null}, ${data.dependencia ?? null}, ${data.cargo ?? null}, ${data.turno ?? null})
   `
   revalidatePath("/agentes")
   revalidatePath("/")
@@ -62,37 +53,24 @@ export async function createAgente(data: {
 export async function updateAgente(
   id: number,
   data: {
-    nombre: string
     legajo: string
+    apellido_nombre: string
+    fecha_ingreso?: string
     dependencia?: string
     cargo?: string
-    tipo?: string
-    telefono?: string
+    turno?: string
   },
 ) {
   await sql`
     UPDATE agentes SET
-      nombre = ${data.nombre},
       legajo = ${data.legajo},
+      apellido_nombre = ${data.apellido_nombre},
+      fecha_ingreso = ${data.fecha_ingreso ?? null},
       dependencia = ${data.dependencia ?? null},
       cargo = ${data.cargo ?? null},
-      tipo = ${data.tipo ?? null},
-      telefono = ${data.telefono ?? null}
+      turno = ${data.turno ?? null},
+      updated_at = CURRENT_TIMESTAMP
     WHERE id = ${id}
   `
-  revalidatePath("/agentes")
-}
-
-export async function updateHoras(id: number, horas_mensuales: number, horas_extra: number) {
-  await sql`
-    UPDATE agentes SET horas_mensuales = ${horas_mensuales}, horas_extra = ${horas_extra}
-    WHERE id = ${id}
-  `
-  revalidatePath("/agentes")
-}
-
-export async function toggleServicio(id: number, en_servicio: boolean) {
-  await sql`UPDATE agentes SET en_servicio = ${en_servicio} WHERE id = ${id}`
-  revalidatePath("/")
   revalidatePath("/agentes")
 }

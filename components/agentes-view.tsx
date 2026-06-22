@@ -1,19 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Pencil, Clock, X } from "lucide-react"
+import { Search, Plus, Pencil, X } from "lucide-react"
 import type { Agente } from "@/lib/db"
-import { getAgentes, createAgente, updateAgente, updateHoras } from "@/app/actions/agentes"
+import { getAgentes, createAgente, updateAgente } from "@/app/actions/agentes"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -22,25 +15,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-const tipos = ["Caminadora", "Moto", "Tránsito", "Patrulla de Moto", "Sin tipo"]
-
-function initials(nombre: string) {
-  return nombre.slice(0, 2).toUpperCase()
+function initials(apellidoNombre: string) {
+  return apellidoNombre.slice(0, 2).toUpperCase()
 }
 
 export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
   const [agentes, setAgentes] = useState(initialAgentes)
   const [search, setSearch] = useState("")
-  const [tipo, setTipo] = useState("Todos los tipos")
   const [, startTransition] = useTransition()
 
   const [crearOpen, setCrearOpen] = useState(false)
   const [editar, setEditar] = useState<Agente | null>(null)
-  const [horas, setHoras] = useState<Agente | null>(null)
 
-  function refresh(s = search, t = tipo) {
+  function refresh(s = search) {
     startTransition(async () => {
-      const data = (await getAgentes(s, t)) as Agente[]
+      const data = (await getAgentes(s)) as Agente[]
       setAgentes(data)
     })
   }
@@ -60,32 +49,12 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
-            refresh(e.target.value, tipo)
+            refresh(e.target.value)
           }}
-          placeholder="Buscar por nombre, legajo o DNI"
+          placeholder="Buscar por apellido y nombre, legajo o dependencia"
           className="rounded-xl pl-10"
         />
       </div>
-
-      <Select
-        value={tipo}
-        onValueChange={(v) => {
-          setTipo(v)
-          refresh(search, v)
-        }}
-      >
-        <SelectTrigger className="mb-4 rounded-xl">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="Todos los tipos">Todos los tipos</SelectItem>
-          {tipos.map((t) => (
-            <SelectItem key={t} value={t}>
-              {t}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
 
       <p className="mb-3 text-sm text-muted-foreground">{agentes.length} agente(s) encontrado(s)</p>
 
@@ -93,26 +62,15 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
         {agentes.map((a) => (
           <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">
-              {initials(a.nombre)}
+              {initials(a.apellido_nombre)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-foreground">{a.nombre}</p>
+              <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
               <p className="text-xs text-muted-foreground">Legajo: {a.legajo}</p>
-              <p className="text-xs">
-                <span className="text-primary">{a.tipo}</span>{" "}
-                <span className={a.activo ? "text-chart-2 font-medium" : "text-destructive font-medium"}>
-                  {a.activo ? "Activo" : "Inactivo"}
-                </span>
-              </p>
+              <p className="text-xs text-primary">{a.dependencia ?? "—"}</p>
+              {a.turno && <p className="text-xs text-muted-foreground">{a.turno}</p>}
             </div>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setHoras(a)}
-                aria-label="Editar horas"
-                className="rounded-lg p-2 text-primary hover:bg-accent"
-              >
-                <Clock className="h-5 w-5" />
-              </button>
               <button
                 onClick={() => setEditar(a)}
                 aria-label="Editar agente"
@@ -138,7 +96,6 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
       {editar && (
         <EditarAgenteDialog agente={editar} onClose={() => setEditar(null)} onDone={() => refresh()} />
       )}
-      {horas && <EditarHorasDialog agente={horas} onClose={() => setHoras(null)} onDone={() => refresh()} />}
     </div>
   )
 }
@@ -153,13 +110,27 @@ function CrearAgenteDialog({
   onDone: () => void
 }) {
   const [pending, start] = useTransition()
-  const [form, setForm] = useState({ nombre: "", dni: "", legajo: "", telefono: "", tipo: "" })
+  const [form, setForm] = useState({
+    apellido_nombre: "",
+    legajo: "",
+    fecha_ingreso: "",
+    dependencia: "",
+    cargo: "",
+    turno: "",
+  })
 
   function submit() {
-    if (!form.nombre || !form.dni || !form.legajo || !form.tipo) return
+    if (!form.apellido_nombre || !form.legajo) return
     start(async () => {
-      await createAgente(form)
-      setForm({ nombre: "", dni: "", legajo: "", telefono: "", tipo: "" })
+      await createAgente({
+        apellido_nombre: form.apellido_nombre,
+        legajo: form.legajo,
+        fecha_ingreso: form.fecha_ingreso || undefined,
+        dependencia: form.dependencia || undefined,
+        cargo: form.cargo || undefined,
+        turno: form.turno || undefined,
+      })
+      setForm({ apellido_nombre: "", legajo: "", fecha_ingreso: "", dependencia: "", cargo: "", turno: "" })
       onDone()
       onClose()
     })
@@ -172,31 +143,18 @@ function CrearAgenteDialog({
           <DialogTitle>Nuevo Agente</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <Field label="Nombre completo *" value={form.nombre} onChange={(v) => setForm({ ...form, nombre: v })} />
-          <Field label="DNI *" value={form.dni} onChange={(v) => setForm({ ...form, dni: v })} />
+          <Field label="Apellido y nombre *" value={form.apellido_nombre} onChange={(v) => setForm({ ...form, apellido_nombre: v })} />
           <Field label="Legajo *" value={form.legajo} onChange={(v) => setForm({ ...form, legajo: v })} />
-          <Field label="Teléfono" value={form.telefono} onChange={(v) => setForm({ ...form, telefono: v })} />
-          <div>
-            <Label className="mb-1.5 block text-xs text-muted-foreground">Tipo de agente *</Label>
-            <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Seleccionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {tipos.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Field label="Fecha de ingreso" placeholder="DD/MM/AAAA" value={form.fecha_ingreso} onChange={(v) => setForm({ ...form, fecha_ingreso: v })} />
+          <Field label="Dependencia" value={form.dependencia} onChange={(v) => setForm({ ...form, dependencia: v })} />
+          <Field label="Cargo" value={form.cargo} onChange={(v) => setForm({ ...form, cargo: v })} />
+          <Field label="Turno" value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={pending}>
+          <Button onClick={submit} disabled={pending || !form.apellido_nombre || !form.legajo}>
             {pending ? "Creando..." : "Crear Agente"}
           </Button>
         </DialogFooter>
@@ -216,17 +174,24 @@ function EditarAgenteDialog({
 }) {
   const [pending, start] = useTransition()
   const [form, setForm] = useState({
-    nombre: agente.nombre,
+    apellido_nombre: agente.apellido_nombre,
     legajo: agente.legajo,
+    fecha_ingreso: agente.fecha_ingreso ?? "",
     dependencia: agente.dependencia ?? "",
     cargo: agente.cargo ?? "",
-    tipo: agente.tipo ?? "",
-    telefono: agente.telefono ?? "",
+    turno: agente.turno ?? "",
   })
 
   function submit() {
     start(async () => {
-      await updateAgente(agente.id, form)
+      await updateAgente(agente.id, {
+        apellido_nombre: form.apellido_nombre,
+        legajo: form.legajo,
+        fecha_ingreso: form.fecha_ingreso || undefined,
+        dependencia: form.dependencia || undefined,
+        cargo: form.cargo || undefined,
+        turno: form.turno || undefined,
+      })
       onDone()
       onClose()
     })
@@ -239,14 +204,12 @@ function EditarAgenteDialog({
           <DialogTitle>Editar datos del agente</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <Field label="Nombre" value={form.nombre} onChange={(v) => setForm({ ...form, nombre: v })} />
+          <Field label="Apellido y nombre" value={form.apellido_nombre} onChange={(v) => setForm({ ...form, apellido_nombre: v })} />
           <Field label="Legajo" value={form.legajo} onChange={(v) => setForm({ ...form, legajo: v })} />
-          <Field
-            label="Dependencia"
-            value={form.dependencia}
-            onChange={(v) => setForm({ ...form, dependencia: v })}
-          />
+          <Field label="Fecha de ingreso" value={form.fecha_ingreso} onChange={(v) => setForm({ ...form, fecha_ingreso: v })} />
+          <Field label="Dependencia" value={form.dependencia} onChange={(v) => setForm({ ...form, dependencia: v })} />
           <Field label="Cargo" value={form.cargo} onChange={(v) => setForm({ ...form, cargo: v })} />
+          <Field label="Turno" value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -261,74 +224,21 @@ function EditarAgenteDialog({
   )
 }
 
-function EditarHorasDialog({
-  agente,
-  onClose,
-  onDone,
-}: {
-  agente: Agente
-  onClose: () => void
-  onDone: () => void
-}) {
-  const [pending, start] = useTransition()
-  const [mensuales, setMensuales] = useState(String(agente.horas_mensuales ?? 0))
-  const [extra, setExtra] = useState(String(agente.horas_extra ?? 0))
-
-  function submit() {
-    start(async () => {
-      await updateHoras(agente.id, Number(mensuales) || 0, Number(extra) || 0)
-      onDone()
-      onClose()
-    })
-  }
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Editar horas — {agente.nombre}</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div>
-            <Label className="mb-1.5 block text-xs text-muted-foreground">Horas mensuales</Label>
-            <Input
-              type="number"
-              value={mensuales}
-              onChange={(e) => setMensuales(e.target.value)}
-              className="rounded-xl"
-            />
-          </div>
-          <div>
-            <Label className="mb-1.5 block text-xs text-muted-foreground">Horas extra</Label>
-            <Input type="number" value={extra} onChange={(e) => setExtra(e.target.value)} className="rounded-xl" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} disabled={pending}>
-            {pending ? "Guardando..." : "Guardar horas"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 function Field({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  placeholder?: string
 }) {
   return (
     <div>
       <Label className="mb-1.5 block text-xs text-muted-foreground">{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl" />
+      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="rounded-xl" />
     </div>
   )
 }

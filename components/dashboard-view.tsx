@@ -1,14 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { User, Home, UserX, Users, MapPin, Camera, FileBarChart, ChevronRight } from "lucide-react"
+import { User, Users, Camera, FileBarChart, ChevronRight } from "lucide-react"
 import type { Agente } from "@/lib/db"
 
 type Stats = {
-  activos: number
-  en_servicio: number
-  inactivos: number
   total: number
+  total_controles: number
+  positivos: number
+  negativos: number
+  observaciones_abiertas: number
 }
 
 const accesos = [
@@ -17,16 +18,16 @@ const accesos = [
   { href: "/reportes", label: "Reportes (PDF / Excel)", icon: FileBarChart },
 ]
 
-function initials(nombre: string) {
-  return nombre.slice(0, 2).toUpperCase()
+function initials(apellidoNombre: string) {
+  return apellidoNombre.slice(0, 2).toUpperCase()
 }
 
 export function DashboardView({ stats, disponibles }: { stats: Stats; disponibles: Agente[] }) {
   const cards = [
-    { label: "Activos", value: stats.activos, icon: User, color: "text-primary" },
-    { label: "En servicio", value: stats.en_servicio, icon: Home, color: "text-chart-2" },
-    { label: "Inactivos", value: stats.inactivos, icon: UserX, color: "text-muted-foreground" },
-    { label: "Total", value: stats.total, icon: Users, color: "text-foreground" },
+    { label: "Total agentes", value: stats.total, icon: Users, color: "text-primary" },
+    { label: "Controles", value: stats.total_controles, icon: Camera, color: "text-chart-2" },
+    { label: "Positivos", value: stats.positivos, icon: User, color: "text-destructive" },
+    { label: "Observaciones abiertas", value: stats.observaciones_abiertas, icon: FileBarChart, color: "text-foreground" },
   ]
 
   return (
@@ -67,28 +68,20 @@ export function DashboardView({ stats, disponibles }: { stats: Stats; disponible
                 </Link>
               )
             })}
-            <Link
-              href="/agentes"
-              className="flex items-center gap-3 rounded-2xl bg-card px-4 py-4 shadow-sm ring-1 ring-border transition-colors hover:bg-accent"
-            >
-              <MapPin className="h-5 w-5 text-primary" />
-              <span className="flex-1 font-medium text-foreground">Control Horario</span>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </Link>
           </div>
         </section>
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-foreground">Agentes disponibles</h3>
+            <h3 className="text-lg font-bold text-foreground">Agentes</h3>
             <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
-              {disponibles.length} en servicio
+              {disponibles.length} en padrón
             </span>
           </div>
           <div className="flex flex-col gap-2">
             {disponibles.length === 0 && (
               <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-border">
-                No hay agentes en servicio en este momento.
+                No hay agentes cargados.
               </p>
             )}
             {disponibles.map((a) => (
@@ -97,18 +90,14 @@ export function DashboardView({ stats, disponibles }: { stats: Stats; disponible
                 className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">
-                  {initials(a.nombre)}
+                  {initials(a.apellido_nombre)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground">{a.nombre}</p>
+                  <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    Leg. {a.legajo} · {a.tipo}
+                    Leg. {a.legajo} · {a.dependencia ?? "—"}
                   </p>
                 </div>
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-chart-2">
-                  <span className="h-2 w-2 rounded-full bg-chart-2" />
-                  Activo
-                </span>
               </div>
             ))}
           </div>

@@ -1,40 +1,31 @@
 import { sql } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
-function toTimestamp(iso: string | Date | null): number | null {
-  if (!iso) return null;
-  return new Date(iso).getTime();
-}
-
-function toIso(timestamp: number | null | undefined): string | null {
-  if (timestamp == null) return null;
-  return new Date(timestamp).toISOString();
-}
-
 function mapRowToDTO(row: any) {
   return {
     id: row.id,
+    agente_id: row.agente_id,
     legajo: row.legajo ?? "",
-    nombre: row.nombre ?? "",
+    apellido_nombre: row.apellido_nombre ?? "",
     dependencia: row.dependencia ?? null,
     cargo: row.cargo ?? null,
     turno: row.turno ?? null,
-    fecha: toTimestamp(row.fecha_control),
+    fecha: row.fecha,
     resultado: row.resultado,
-    graduacion: row.valor ?? null,
-    quienTestea: row.quien_testea ?? "",
-    observaciones: row.observaciones ?? null,
-    createdAt: toTimestamp(row.created_at),
+    graduacion: row.graduacion != null ? Number(row.graduacion) : null,
+    servicio_extra: row.servicio_extra ?? null,
+    observacion: row.observacion ?? null,
+    created_at: row.created_at,
   };
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const rows = await sql`
-      SELECT c.*, a.nombre, a.legajo, a.dependencia, a.cargo
-      FROM alcoholemia_controles c
+      SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia, a.cargo, a.turno
+      FROM controles_alcoholemia c
       JOIN agentes a ON a.id = c.agente_id
-      ORDER BY c.fecha_control DESC
+      ORDER BY c.fecha DESC
     `;
     return NextResponse.json(rows.map(mapRowToDTO));
   } catch (error) {
@@ -58,33 +49,27 @@ export async function POST(request: NextRequest) {
     }
 
     const agenteId = agente[0].id;
-    const fechaControl = body.fecha != null ? new Date(body.fecha).toISOString() : new Date().toISOString();
-    const tipoServicio = body.tipo_servicio ?? "REGULAR";
+    const fecha = body.fecha ?? new Date().toISOString();
 
     const inserted = await sql`
-      INSERT INTO alcoholemia_controles (agente_id, resultado, valor, tipo_servicio, observaciones, fecha_control, turno, quien_testea, legajo)
-      VALUES (${agenteId}, ${body.resultado}, ${body.graduacion ?? null}, ${tipoServicio}, ${body.observaciones ?? null}, ${fechaControl}, ${body.turno ?? null}, ${body.quienTestea ?? null}, ${body.legajo})
-      RETURNING id, created_at
+      INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha)
+      VALUES (${agenteId}, ${body.resultado}, ${body.graduacion ?? null}, ${body.servicio_extra ?? null}, ${body.observacion ?? null}, ${fecha})
+      RETURNING *
     `;
 
     const row = inserted[0];
 
-    const dto = {
-      id: row.id,
-      legajo: body.legajo,
-      nombre: body.nombre ?? "",
-      dependencia: body.dependencia ?? null,
-      cargo: body.cargo ?? null,
-      turno: body.turno ?? null,
-      fecha: body.fecha ?? toTimestamp(fechaControl),
-      resultado: body.resultado,
-      graduacion: body.graduacion ?? null,
-      quienTestea: body.quienTestea ?? "",
-      observaciones: body.observaciones ?? null,
-      createdAt: toTimestamp(row.created_at),
-    };
-
-    return NextResponse.json(dto, { status: 201 });
+    return NextResponse.json(
+      {
+        ...mapRowToDTO(row),
+        legajo: body.legajo,
+        apellido_nombre: body.apellido_nombre ?? "",
+        dependencia: body.dependencia ?? null,
+        cargo: body.cargo ?? null,
+        turno: body.turno ?? null,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
