@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, Loader2, ListTree } from "lucide-react"
+import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, ChevronDown, Loader2, ListTree } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -145,17 +145,20 @@ export function ReporteSemanalClient() {
         </CardContent>
       </Card>
 
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <ListTree className="h-4 w-4" />
-            Códigos de licencia ({VALIDACION.length})
-          </CardTitle>
-          <CardDescription>
+      <details className="mb-4 group rounded-2xl border-2 border-border bg-card shadow-sm">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 p-4 select-none">
+          <div className="flex items-center gap-2">
+            <ListTree className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-foreground">
+              Códigos de licencia ({VALIDACION.length})
+            </span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-border p-4">
+          <p className="mb-3 text-xs text-muted-foreground">
             Catálogo de códigos que se usan para mapear motivos y validar la columna Licencia.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {VALIDACION_ORDENADA.map(([codigo, desc]) => (
               <div key={codigo} className="flex items-baseline gap-3 border-b border-border/40 py-1">
@@ -166,8 +169,8 @@ export function ReporteSemanalClient() {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
       <Card>
         <CardHeader>
