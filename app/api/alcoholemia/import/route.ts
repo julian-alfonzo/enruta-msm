@@ -16,8 +16,8 @@ async function importControls(controls: ControlData[]) {
   for (const control of controls) {
     try {
       await sql`
-        INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha)
-        VALUES (${control.agente_id}, ${control.resultado}, ${control.graduacion ?? null}, ${control.servicio_extra ?? null}, ${control.observacion ?? null}, ${control.fecha})
+        INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha, created_at)
+        VALUES (${control.agente_id}, ${control.resultado}, ${control.graduacion ?? null}, ${control.servicio_extra ?? null}, ${control.observacion ?? null}, ${control.fecha}, ${new Date().toISOString()})
       `;
       results.imported++;
       results.details.push(`✓ Control importado para agente ${control.agente_id}`);

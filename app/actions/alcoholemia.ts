@@ -57,8 +57,8 @@ export async function createControl(data: {
   fecha: string
 }) {
   await sql`
-    INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha)
-    VALUES (${data.agente_id}, ${data.resultado}, ${data.graduacion ?? null}, ${data.servicio_extra ?? null}, ${data.observacion ?? null}, ${data.fecha})
+    INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha, created_at)
+    VALUES (${data.agente_id}, ${data.resultado}, ${data.graduacion ?? null}, ${data.servicio_extra ?? null}, ${data.observacion ?? null}, ${data.fecha}, ${new Date().toISOString()})
   `
   revalidatePath("/alcoholemia")
 }

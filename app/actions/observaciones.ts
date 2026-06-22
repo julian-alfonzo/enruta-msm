@@ -69,8 +69,8 @@ export async function createObservacion(data: {
   fecha: string
 }) {
   await sql`
-    INSERT INTO observaciones_reclamos (agente_id, tipo, descripcion, fecha, resuelto)
-    VALUES (${data.agente_id}, ${data.tipo}, ${data.descripcion}, ${data.fecha}, FALSE)
+    INSERT INTO observaciones_reclamos (agente_id, tipo, descripcion, fecha, resuelto, created_at)
+    VALUES (${data.agente_id}, ${data.tipo}, ${data.descripcion}, ${data.fecha}, FALSE, ${new Date().toISOString()})
   `
   revalidatePath("/observaciones")
 }

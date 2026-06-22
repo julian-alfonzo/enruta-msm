@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
     const fecha = body.fecha ?? new Date().toISOString();
 
     const inserted = await sql`
-      INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha)
-      VALUES (${agenteId}, ${body.resultado}, ${body.graduacion ?? null}, ${body.servicio_extra ?? null}, ${body.observacion ?? null}, ${fecha})
+      INSERT INTO controles_alcoholemia (agente_id, resultado, graduacion, servicio_extra, observacion, fecha, created_at)
+      VALUES (${agenteId}, ${body.resultado}, ${body.graduacion ?? null}, ${body.servicio_extra ?? null}, ${body.observacion ?? null}, ${fecha}, ${new Date().toISOString()})
       RETURNING *
     `;
 

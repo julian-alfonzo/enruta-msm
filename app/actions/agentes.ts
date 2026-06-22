@@ -42,9 +42,10 @@ export async function createAgente(data: {
   cargo?: string
   turno?: string
 }) {
+  const now = new Date().toISOString()
   await sql`
-    INSERT INTO agentes (legajo, apellido_nombre, fecha_ingreso, dependencia, cargo, turno)
-    VALUES (${data.legajo}, ${data.apellido_nombre}, ${data.fecha_ingreso ?? null}, ${data.dependencia ?? null}, ${data.cargo ?? null}, ${data.turno ?? null})
+    INSERT INTO agentes (legajo, apellido_nombre, fecha_ingreso, dependencia, cargo, turno, created_at, updated_at)
+    VALUES (${data.legajo}, ${data.apellido_nombre}, ${data.fecha_ingreso ?? null}, ${data.dependencia ?? null}, ${data.cargo ?? null}, ${data.turno ?? null}, ${now}, ${now})
   `
   revalidatePath("/agentes")
   revalidatePath("/")
@@ -69,7 +70,7 @@ export async function updateAgente(
       dependencia = ${data.dependencia ?? null},
       cargo = ${data.cargo ?? null},
       turno = ${data.turno ?? null},
-      updated_at = CURRENT_TIMESTAMP
+      updated_at = ${new Date().toISOString()}
     WHERE id = ${id}
   `
   revalidatePath("/agentes")
