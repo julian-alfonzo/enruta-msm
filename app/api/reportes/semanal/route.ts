@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const xlsxBuffer = generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano }, resultado.nombreSalida)
+    const xlsxBuffer = await generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano }, resultado.nombreSalida)
 
     return new NextResponse(xlsxBuffer, {
       status: 200,

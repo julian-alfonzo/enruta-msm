@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import { MAPPING_MANUAL, CODIGOS_REVISAR, CODIGO_IGNORADO, CODIGO_FLAG_927, cargarNomenclador, debeExcluir } from "./nomenclador"
 import { VALIDACION, VALIDACION_BY_DESC } from "./validacion"
 import { Registro, Entrada, OpcionesProceso, ResultadoProceso, MapeoFuente } from "./tipos"
@@ -259,11 +260,10 @@ export function procesarParteSemanal(
 export function generarExcelSemanal(
   entradas: Entrada[],
   opciones: OpcionesProceso,
-  nombreSalida: string,
+  _nombreSalida: string,
 ): ArrayBuffer {
-  const wb = XLSX.utils.book_new()
+  void _nombreSalida
 
-  const datos: unknown[][] = [["Legajo", "Nro Cargo", "Licencia", "Fecha Inicio", "Fecha Fin", "Año"]]
   const entradasOrdenadas = ordenarEntradas(entradas)
 
   const legajoCount = new Map<number, number>()
@@ -273,75 +273,67 @@ export function generarExcelSemanal(
     }
   }
 
-  for (const e of entradasOrdenadas) {
-    const fila: unknown[] = [
-      e.legajo,
-      1,
-      e.codigo != null ? e.codigo : "VACIO",
-      dateToSerial(e.fecha_inicio),
-      dateToSerial(e.fecha_fin),
-      opciones.ano,
-    ]
-    datos.push(fila)
-  }
+  const workbook = new ExcelJS.Workbook()
+  const ws = workbook.addWorksheet("Datos")
+  ws.columns = [
+    { header: "Legajo", key: "legajo", width: 9.14 },
+    { header: "Nro Cargo", key: "nro_cargo", width: 10 },
+    { header: "Licencia", key: "licencia", width: 10 },
+    { header: "Fecha Inicio", key: "fecha_inicio", width: 11.71, style: { numFmt: "d-mmm" } },
+    { header: "Fecha Fin", key: "fecha_fin", width: 10, style: { numFmt: "d-mmm" } },
+    { header: "Año", key: "anio", width: 11.71 },
+  ]
+  ws.getRow(1).font = { name: "Calibri", size: 11 }
+  ws.getRow(1).alignment = { horizontal: "center" }
 
-  const wsDatos = XLSX.utils.aoa_to_sheet(datos)
-  aplicarEstilosDatos(wsDatos, entradasOrdenadas, legajoCount, datos.length)
-  XLSX.utils.book_append_sheet(wb, wsDatos, "Datos")
+  for (let i = 0; i < entradasOrdenadas.length; i++) {
+    const e = entradasOrdenadas[i]
+    const serialInicio = dateToSerial(e.fecha_inicio)
+    const serialFin = dateToSerial(e.fecha_fin)
+    const isVacio = e.codigo == null
+    const isHighlight =
+      e.flag_927 ||
+      (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1)
 
-  const wsHoja1 = XLSX.utils.aoa_to_sheet([[]])
-  XLSX.utils.book_append_sheet(wb, wsHoja1, "Hoja1")
+    const row = ws.addRow({
+      legajo: e.legajo,
+      nro_cargo: 1,
+      licencia: isVacio ? "VACIO" : e.codigo,
+      fecha_inicio: serialInicio,
+      fecha_fin: serialFin,
+      anio: opciones.ano,
+    })
 
-  const validacionData: unknown[][] = [["Licencia", "Descripcion"]]
-  for (const [codigo, desc] of VALIDACION) validacionData.push([codigo, desc])
-  const wsValidacion = XLSX.utils.aoa_to_sheet(validacionData)
-  XLSX.utils.book_append_sheet(wb, wsValidacion, "Validacion")
+    row.font = { name: "Calibri", size: 11 }
+    row.alignment = { horizontal: "center" }
 
-  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer
-  return out
-}
+    const fechaInicioCell = row.getCell("fecha_inicio")
+    fechaInicioCell.numFmt = "d-mmm"
 
-function aplicarEstilosDatos(
-  ws: XLSX.WorkSheet,
-  entradas: Entrada[],
-  legajoCount: Map<number, number>,
-  totalFilas: number,
-) {
-  for (let i = 0; i < entradas.length; i++) {
-    const e = entradas[i]
-    const rowNum = i + 1
-    const colLicencia = `C${rowNum + 1}`
+    const fechaFinCell = row.getCell("fecha_fin")
+    fechaFinCell.numFmt = "d-mmm"
 
-    const cell = ws[colLicencia]
-    if (!cell) continue
-
-    cell.s = cell.s || {}
-    cell.s.alignment = { horizontal: "center" }
-    cell.s.font = cell.s.font || { name: "Calibri", sz: 11 }
-
-    if (e.codigo == null) {
-      cell.s.fill = { patternType: "solid", fgColor: { rgb: "FFFF0000" } }
-    } else if (e.flag_927 || (CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1)) {
-      cell.s.fill = { patternType: "solid", fgColor: { rgb: "FFFFFF00" } }
-    }
-
-    for (const col of ["A", "B", "C", "D", "E", "F"]) {
-      const c = ws[`${col}${rowNum + 1}`]
-      if (!c) continue
-      c.s = c.s || {}
-      c.s.font = c.s.font || { name: "Calibri", sz: 11 }
-      c.s.alignment = c.s.alignment || { horizontal: "center" }
-    }
-
-    const inicioCell = ws[`D${rowNum + 1}`]
-    if (inicioCell) {
-      inicioCell.t = "n"
-      inicioCell.z = "d-mmm"
-    }
-    const finCell = ws[`E${rowNum + 1}`]
-    if (finCell) {
-      finCell.t = "n"
-      finCell.z = "d-mmm"
+    const licenciaCell = row.getCell("licencia")
+    if (isVacio) {
+      licenciaCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF0000" } }
+    } else if (isHighlight) {
+      licenciaCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } }
     }
   }
+
+  const wsHoja1 = workbook.addWorksheet("Hoja1")
+  wsHoja1.getCell("A1").value = "Legajo"
+
+  const wsValidacion = workbook.addWorksheet("Validacion")
+  wsValidacion.columns = [
+    { header: "Licencia", key: "codigo", width: 10 },
+    { header: "Descripcion", key: "descripcion", width: 40 },
+  ]
+  wsValidacion.getRow(1).font = { name: "Calibri", size: 11 }
+  wsValidacion.getRow(1).alignment = { horizontal: "center" }
+  for (const [codigo, desc] of VALIDACION) {
+    wsValidacion.addRow({ codigo, descripcion: desc })
+  }
+
+  return workbook.xlsx.writeBuffer({ useStyles: true }) as unknown as ArrayBuffer
 }
