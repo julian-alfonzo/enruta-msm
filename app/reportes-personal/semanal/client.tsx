@@ -2,17 +2,20 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, Loader2 } from "lucide-react"
+import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, Loader2, ListTree } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { VALIDACION } from "@/lib/reportes/semanal/validacion"
 
 type Resultado = {
   registros: number
   motivosSinCoincidencia: string[]
   contadorFuentes: Record<string, number>
 }
+
+const VALIDACION_ORDENADA = [...VALIDACION].sort((a, b) => a[0] - b[0])
 
 export function ReporteSemanalClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -138,6 +141,30 @@ export function ReporteSemanalClient() {
                 Código 4 o 27 con más de un registro del mismo legajo, o código 927 (citado por art).
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <ListTree className="h-4 w-4" />
+            Códigos de licencia ({VALIDACION.length})
+          </CardTitle>
+          <CardDescription>
+            Catálogo de códigos que se usan para mapear motivos y validar la columna Licencia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {VALIDACION_ORDENADA.map(([codigo, desc]) => (
+              <div key={codigo} className="flex items-baseline gap-3 border-b border-border/40 py-1">
+                <span className="w-10 shrink-0 text-right font-mono text-xs font-semibold text-primary">
+                  {codigo}
+                </span>
+                <span className="text-foreground">{desc}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
