@@ -21,6 +21,11 @@ function fmt(iso: string) {
   })
 }
 
+function fmtDate(iso: string) {
+  if (!iso) return ""
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
 export function ReportesView() {
   const today = new Date().toISOString().slice(0, 10)
   const [tipo, setTipo] = useState<ReporteTipo>("alcoholemia")
@@ -58,7 +63,7 @@ export function ReportesView() {
             c.resultado,
             c.graduacion != null ? `${Number(c.graduacion).toFixed(2)} g/L` : "-",
             c.servicio_extra ?? "-",
-            fmt(c.fecha),
+            fmtDate(c.fecha),
           ]),
           headStyles: { fillColor: [79, 195, 247] },
           styles: { fontSize: 8 },
@@ -101,8 +106,8 @@ export function ReportesView() {
           Dependencia: c.dependencia ?? "",
           Resultado: c.resultado,
           "Graduación (g/L)": c.graduacion != null ? Number(c.graduacion) : "",
-          "Servicio extra": c.servicio_extra ?? "",
-          Fecha: fmt(c.fecha),
+          "Servicio": c.servicio_extra ?? "",
+          Fecha: fmtDate(c.fecha),
           Observación: c.observacion ?? "",
         }))
         sheetName = "Alcoholemia"

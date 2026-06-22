@@ -16,6 +16,10 @@ export function sql(strings: TemplateStringsArray, ...values: any[]) {
   return getSql()(strings, ...values)
 }
 
+export function rawQuery<T = any>(text: string, params: any[] = []): Promise<T[]> {
+  return getSql().query(text, params) as Promise<T[]>
+}
+
 export type Agente = {
   id: number
   legajo: string
@@ -25,14 +29,15 @@ export type Agente = {
   cargo: string | null
   turno: string | null
   created_at: string
-  updated_at: string | null
+  updated_at: string
+  deleted_at: string | null
 }
 
 export type ControlAlcoholemia = {
   id: number
   agente_id: number
   fecha: string
-  resultado: "POSITIVO" | "NEGATIVO"
+  resultado: "Positivo" | "Negativo"
   graduacion: number | null
   servicio_extra: string | null
   observacion: string | null
@@ -42,7 +47,7 @@ export type ControlAlcoholemia = {
 export type ObservacionReclamo = {
   id: number
   agente_id: number
-  tipo: "FALTA" | "RECLAMO" | "NOVEDAD"
+  tipo: "Observación" | "Reclamo"
   descripcion: string
   fecha: string
   resuelto: boolean

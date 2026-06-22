@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Pencil, X } from "lucide-react"
+import { Search, Plus, Pencil, Trash2 } from "lucide-react"
 import type { Agente } from "@/lib/db"
-import { getAgentes, createAgente, updateAgente } from "@/app/actions/agentes"
+import { getAgentes, createAgente, updateAgente, deleteAgente } from "@/app/actions/agentes"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+
+const TURNOS = ["ROTATIVO", "MAÑANA", "TARDE", "NOCHE", "FIJO"]
 
 function initials(apellidoNombre: string) {
   return apellidoNombre.slice(0, 2).toUpperCase()
@@ -26,6 +28,7 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
 
   const [crearOpen, setCrearOpen] = useState(false)
   const [editar, setEditar] = useState<Agente | null>(null)
+  const [borrar, setBorrar] = useState<Agente | null>(null)
 
   function refresh(s = search) {
     startTransition(async () => {
@@ -78,12 +81,18 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
               >
                 <Pencil className="h-5 w-5" />
               </button>
+              <button
+                onClick={() => setBorrar(a)}
+                aria-label="Eliminar agente"
+                className="rounded-lg p-2 text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* FAB mobile */}
       <button
         onClick={() => setCrearOpen(true)}
         aria-label="Nuevo agente"
@@ -95,6 +104,9 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
       <CrearAgenteDialog open={crearOpen} onClose={() => setCrearOpen(false)} onDone={() => refresh()} />
       {editar && (
         <EditarAgenteDialog agente={editar} onClose={() => setEditar(null)} onDone={() => refresh()} />
+      )}
+      {borrar && (
+        <BorrarAgenteDialog agente={borrar} onClose={() => setBorrar(null)} onDone={() => refresh()} />
       )}
     </div>
   )
@@ -110,9 +122,10 @@ function CrearAgenteDialog({
   onDone: () => void
 }) {
   const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    apellido_nombre: "",
     legajo: "",
+    apellido_nombre: "",
     fecha_ingreso: "",
     dependencia: "",
     cargo: "",
@@ -120,19 +133,27 @@ function CrearAgenteDialog({
   })
 
   function submit() {
-    if (!form.apellido_nombre || !form.legajo) return
+    setError(null)
+    if (!form.legajo || !form.apellido_nombre) {
+      setError("Legajo y apellido/nombre son obligatorios")
+      return
+    }
     start(async () => {
-      await createAgente({
-        apellido_nombre: form.apellido_nombre,
-        legajo: form.legajo,
-        fecha_ingreso: form.fecha_ingreso || undefined,
-        dependencia: form.dependencia || undefined,
-        cargo: form.cargo || undefined,
-        turno: form.turno || undefined,
-      })
-      setForm({ apellido_nombre: "", legajo: "", fecha_ingreso: "", dependencia: "", cargo: "", turno: "" })
-      onDone()
-      onClose()
+      try {
+        await createAgente({
+          legajo: form.legajo,
+          apellido_nombre: form.apellido_nombre,
+          fecha_ingreso: form.fecha_ingreso || undefined,
+          dependencia: form.dependencia || undefined,
+          cargo: form.cargo || undefined,
+          turno: form.turno || undefined,
+        })
+        setForm({ legajo: "", apellido_nombre: "", fecha_ingreso: "", dependencia: "", cargo: "", turno: "" })
+        onDone()
+        onClose()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
     })
   }
 
@@ -145,16 +166,17 @@ function CrearAgenteDialog({
         <div className="flex flex-col gap-3">
           <Field label="Apellido y nombre *" value={form.apellido_nombre} onChange={(v) => setForm({ ...form, apellido_nombre: v })} />
           <Field label="Legajo *" value={form.legajo} onChange={(v) => setForm({ ...form, legajo: v })} />
-          <Field label="Fecha de ingreso" placeholder="DD/MM/AAAA" value={form.fecha_ingreso} onChange={(v) => setForm({ ...form, fecha_ingreso: v })} />
+          <Field label="Fecha de ingreso" placeholder="DD/MM/AA" value={form.fecha_ingreso} onChange={(v) => setForm({ ...form, fecha_ingreso: v })} />
           <Field label="Dependencia" value={form.dependencia} onChange={(v) => setForm({ ...form, dependencia: v })} />
           <Field label="Cargo" value={form.cargo} onChange={(v) => setForm({ ...form, cargo: v })} />
-          <Field label="Turno" value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
+          <TurnoSelect value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={pending || !form.apellido_nombre || !form.legajo}>
+          <Button onClick={submit} disabled={pending}>
             {pending ? "Creando..." : "Crear Agente"}
           </Button>
         </DialogFooter>
@@ -173,9 +195,10 @@ function EditarAgenteDialog({
   onDone: () => void
 }) {
   const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    apellido_nombre: agente.apellido_nombre,
     legajo: agente.legajo,
+    apellido_nombre: agente.apellido_nombre,
     fecha_ingreso: agente.fecha_ingreso ?? "",
     dependencia: agente.dependencia ?? "",
     cargo: agente.cargo ?? "",
@@ -183,17 +206,26 @@ function EditarAgenteDialog({
   })
 
   function submit() {
+    setError(null)
+    if (form.legajo !== agente.legajo) {
+      setError("El legajo es inmutable")
+      return
+    }
     start(async () => {
-      await updateAgente(agente.id, {
-        apellido_nombre: form.apellido_nombre,
-        legajo: form.legajo,
-        fecha_ingreso: form.fecha_ingreso || undefined,
-        dependencia: form.dependencia || undefined,
-        cargo: form.cargo || undefined,
-        turno: form.turno || undefined,
-      })
-      onDone()
-      onClose()
+      try {
+        await updateAgente(agente.id, {
+          legajo: form.legajo,
+          apellido_nombre: form.apellido_nombre,
+          fecha_ingreso: form.fecha_ingreso || undefined,
+          dependencia: form.dependencia || undefined,
+          cargo: form.cargo || undefined,
+          turno: form.turno || undefined,
+        })
+        onDone()
+        onClose()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
     })
   }
 
@@ -205,12 +237,13 @@ function EditarAgenteDialog({
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <Field label="Apellido y nombre" value={form.apellido_nombre} onChange={(v) => setForm({ ...form, apellido_nombre: v })} />
-          <Field label="Legajo" value={form.legajo} onChange={(v) => setForm({ ...form, legajo: v })} />
+          <Field label="Legajo" value={form.legajo} onChange={(v) => setForm({ ...form, legajo: v })} disabled />
           <Field label="Fecha de ingreso" value={form.fecha_ingreso} onChange={(v) => setForm({ ...form, fecha_ingreso: v })} />
           <Field label="Dependencia" value={form.dependencia} onChange={(v) => setForm({ ...form, dependencia: v })} />
           <Field label="Cargo" value={form.cargo} onChange={(v) => setForm({ ...form, cargo: v })} />
-          <Field label="Turno" value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
+          <TurnoSelect value={form.turno} onChange={(v) => setForm({ ...form, turno: v })} />
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
@@ -224,21 +257,98 @@ function EditarAgenteDialog({
   )
 }
 
+function BorrarAgenteDialog({
+  agente,
+  onClose,
+  onDone,
+}: {
+  agente: Agente
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  function submit() {
+    setError(null)
+    start(async () => {
+      try {
+        await deleteAgente(agente.id)
+        onDone()
+        onClose()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
+    })
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Eliminar agente</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          ¿Eliminar a <strong>{agente.apellido_nombre}</strong> (Leg. {agente.legajo})? El agente se
+          marcará como eliminado y no aparecerá en los listados.
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button variant="destructive" onClick={submit} disabled={pending}>
+            {pending ? "Eliminando..." : "Eliminar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TurnoSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <Label className="mb-1.5 block text-xs text-muted-foreground">Turno</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+      >
+        <option value="">Sin especificar</option>
+        {TURNOS.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function Field({
   label,
   value,
   onChange,
   placeholder,
+  disabled,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
+  disabled?: boolean
 }) {
   return (
     <div>
       <Label className="mb-1.5 block text-xs text-muted-foreground">{label}</Label>
-      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="rounded-xl" />
+      <Input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="rounded-xl"
+      />
     </div>
   )
 }

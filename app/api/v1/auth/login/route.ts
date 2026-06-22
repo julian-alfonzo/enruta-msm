@@ -1,60 +1,59 @@
-import { sql } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server"
+import { sql } from "@/lib/db"
+import { signAccess, signRefresh, jsonOk, jsonError, withCors } from "@/lib/auth"
 
-export async function POST(request: NextRequest) {
+export async function OPTIONS() {
+  return withCors(new NextResponse(null, { status: 204 }))
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const legajo = body.legajo ?? body.username;
+    const body = await req.json()
+    const { usuario, password } = body as { usuario?: string; password?: string }
 
-    if (!legajo) {
-      return NextResponse.json(
-        { error: "legajo is required" },
-        { status: 400 },
-      );
+    if (!usuario || !password) {
+      return withCors(jsonError(400, "VALIDATION_ERROR", "usuario y password son requeridos"))
+    }
+
+    // Stub: cualquier password no vacío funciona. En producción, validar contra tabla `usuarios`.
+    if (password.length < 4) {
+      return withCors(jsonError(401, "INVALID_CREDENTIALS", "Credenciales inválidas"))
     }
 
     const rows = await sql`
-      SELECT id, legajo, apellido_nombre, dependencia, cargo, turno
-      FROM agentes
-      WHERE legajo = ${legajo}
+      SELECT id, legajo, apellido_nombre FROM agentes
+      WHERE legajo = ${usuario} OR apellido_nombre ILIKE ${"%" + usuario + "%"}
       LIMIT 1
-    `;
+    `
 
     if (rows.length === 0) {
-      return NextResponse.json(
-        { status: "error", message: "Credenciales inválidas" },
-        { status: 401 },
-      );
+      return withCors(jsonError(401, "INVALID_CREDENTIALS", "Credenciales inválidas"))
     }
 
-    const user = rows[0];
+    const user = rows[0]
+    const sub = String(user.id)
+    const legajo = user.legajo
+    const rol = "agente"
 
-    const token = Buffer.from(
-      JSON.stringify({ id: user.id, legajo: user.legajo, ts: Date.now() }),
-    ).toString("base64");
+    const [accessToken, refreshToken] = await Promise.all([
+      signAccess({ sub, legajo, rol }),
+      signRefresh({ sub, legajo, rol }),
+    ])
 
-    return NextResponse.json({
-      status: "success",
-      data: {
-        token,
-        token_type: "Bearer",
-        expires_in: 86400,
-        refresh_token: token + "_refresh",
+    return withCors(
+      jsonOk({
+        accessToken,
+        refreshToken,
+        expiresIn: 3600,
         usuario: {
           id: user.id,
           legajo: user.legajo,
-          apellido_nombre: user.apellido_nombre,
-          dependencia: user.dependencia,
-          cargo: user.cargo,
-          turno: user.turno,
-          email: `${user.legajo}@msm.gob.ar`,
-          rol: "AGENTE",
-          municipalidad: "Municipalidad de San Miguel",
+          apellidoNombre: user.apellido_nombre,
+          rol,
         },
-      },
-      message: "Inicio de sesión exitoso",
-    });
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+      }),
+    )
+  } catch (e) {
+    return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
   }
 }

@@ -4,15 +4,26 @@ import { getObservaciones, getObservacionesStats } from "@/app/actions/observaci
 
 export const dynamic = "force-dynamic"
 
+type ObservacionRow = {
+  id: number
+  agente_id: number
+  tipo: "Observación" | "Reclamo"
+  descripcion: string
+  resuelto: boolean
+  fecha: string
+  created_at: string
+  agente_apellido_nombre: string
+  agente_legajo: string
+}
+
 export default async function ObservacionesPage() {
-  const observaciones = (await getObservaciones()) as any[]
+  const observaciones = (await getObservaciones()) as ObservacionRow[]
   const stats = (await getObservacionesStats()) as {
     total: number
     abiertas: number
     resueltas: number
-    faltas: number
+    observaciones: number
     reclamos: number
-    novedades: number
   }
   return (
     <AppShell>

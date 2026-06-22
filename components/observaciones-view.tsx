@@ -8,7 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Info,
+  MessageSquareWarning,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,10 +42,11 @@ import {
 type ObservacionRow = {
   id: number
   agente_id: number
-  tipo: "FALTA" | "RECLAMO" | "NOVEDAD"
+  tipo: "Observación" | "Reclamo"
   descripcion: string
   resuelto: boolean
   fecha: string
+  created_at: string
   agente_apellido_nombre: string
   agente_legajo: string
 }
@@ -54,22 +55,21 @@ type Stats = {
   total: number
   abiertas: number
   resueltas: number
-  faltas: number
+  observaciones: number
   reclamos: number
-  novedades: number
 }
 
 const tipoConfig = {
-  FALTA: { icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
-  RECLAMO: { icon: XCircle, color: "text-chart-2", bg: "bg-chart-2/10" },
-  NOVEDAD: { icon: Info, color: "text-primary", bg: "bg-primary/10" },
-}
+  Observación: { icon: AlertTriangle, color: "text-chart-2", bg: "bg-chart-2/10" },
+  Reclamo: { icon: MessageSquareWarning, color: "text-destructive", bg: "bg-destructive/10" },
+} as const
 
 function initials(n: string) {
   return n.slice(0, 2).toUpperCase()
 }
 
 function fmtFecha(iso: string) {
+  if (!iso) return ""
   const d = new Date(iso)
   return d.toLocaleString("es-AR", {
     day: "2-digit",
@@ -96,11 +96,7 @@ export function ObservacionesView({
 
   function refresh() {
     startTransition(async () => {
-      const data = (await getObservaciones(
-        search,
-        filtroTipo,
-        filtroResuelto,
-      )) as ObservacionRow[]
+      const data = (await getObservaciones(search, filtroTipo, filtroResuelto)) as ObservacionRow[]
       setObservaciones(data)
     })
   }
@@ -108,11 +104,7 @@ export function ObservacionesView({
   function handleSearch(value: string) {
     setSearch(value)
     startTransition(async () => {
-      const data = (await getObservaciones(
-        value,
-        filtroTipo,
-        filtroResuelto,
-      )) as ObservacionRow[]
+      const data = (await getObservaciones(value, filtroTipo, filtroResuelto)) as ObservacionRow[]
       setObservaciones(data)
     })
   }
@@ -121,11 +113,7 @@ export function ObservacionesView({
     const v = value ?? "Todos"
     setFiltroTipo(v)
     startTransition(async () => {
-      const data = (await getObservaciones(
-        search,
-        v,
-        filtroResuelto,
-      )) as ObservacionRow[]
+      const data = (await getObservaciones(search, v, filtroResuelto)) as ObservacionRow[]
       setObservaciones(data)
     })
   }
@@ -134,11 +122,7 @@ export function ObservacionesView({
     const v = value ?? "Todos"
     setFiltroResuelto(v)
     startTransition(async () => {
-      const data = (await getObservaciones(
-        search,
-        filtroTipo,
-        v,
-      )) as ObservacionRow[]
+      const data = (await getObservaciones(search, filtroTipo, v)) as ObservacionRow[]
       setObservaciones(data)
     })
   }
@@ -147,23 +131,20 @@ export function ObservacionesView({
     { label: "Total", value: stats.total, color: "text-primary" },
     { label: "Abiertas", value: stats.abiertas, color: "text-chart-2" },
     { label: "Resueltas", value: stats.resueltas, color: "text-muted-foreground" },
-    { label: "Faltas", value: stats.faltas, color: "text-destructive" },
-    { label: "Reclamos", value: stats.reclamos, color: "text-chart-2" },
-    { label: "Novedades", value: stats.novedades, color: "text-primary" },
+    { label: "Observaciones", value: stats.observaciones, color: "text-chart-2" },
+    { label: "Reclamos", value: stats.reclamos, color: "text-destructive" },
   ]
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground lg:text-3xl">
-          Reclamos y Observaciones
-        </h2>
+        <h2 className="text-2xl font-bold text-foreground lg:text-3xl">Reclamos y Observaciones</h2>
         <Button onClick={() => setNuevo(true)}>
           <Plus className="mr-1 h-4 w-4" /> Nueva
         </Button>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-2 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-3 gap-2 lg:grid-cols-5">
         {cards.map((c) => (
           <div
             key={c.label}
@@ -191,9 +172,8 @@ export function ObservacionesView({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos los tipos</SelectItem>
-            <SelectItem value="FALTA">Falta</SelectItem>
-            <SelectItem value="RECLAMO">Reclamo</SelectItem>
-            <SelectItem value="NOVEDAD">Novedad</SelectItem>
+            <SelectItem value="Observación">Observación</SelectItem>
+            <SelectItem value="Reclamo">Reclamo</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filtroResuelto} onValueChange={handleResueltoChange}>
@@ -242,11 +222,7 @@ export function ObservacionesView({
                   <span
                     className={cn(
                       "rounded px-2 py-0.5 text-xs font-bold",
-                      obs.tipo === "FALTA"
-                        ? "bg-destructive/10 text-destructive"
-                        : obs.tipo === "RECLAMO"
-                          ? "bg-chart-2/10 text-chart-2"
-                          : "bg-primary/10 text-primary",
+                      obs.tipo === "Reclamo" ? "bg-destructive/10 text-destructive" : "bg-chart-2/10 text-chart-2",
                     )}
                   >
                     {obs.tipo}
@@ -254,9 +230,7 @@ export function ObservacionesView({
                   <span
                     className={cn(
                       "rounded px-2 py-0.5 text-xs font-bold",
-                      obs.resuelto
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-chart-2/10 text-chart-2",
+                      obs.resuelto ? "bg-muted text-muted-foreground" : "bg-chart-2/10 text-chart-2",
                     )}
                   >
                     {obs.resuelto ? "RESUELTA" : "ABIERTA"}
@@ -266,7 +240,7 @@ export function ObservacionesView({
                   {obs.agente_apellido_nombre}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Leg: {obs.agente_legajo} · {fmtFecha(obs.fecha)}
+                  Leg: {obs.agente_legajo} · {fmtFecha(obs.created_at)}
                 </p>
                 <p className="mt-2 text-sm text-foreground">{obs.descripcion}</p>
               </div>
@@ -293,7 +267,7 @@ export function ObservacionesView({
                       })
                     }}
                     className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                    title="Reabrir observación"
+                    title="Reabrir"
                   >
                     <XCircle className="h-5 w-5" />
                   </button>
@@ -339,9 +313,10 @@ function NuevaObservacionDialog({
   const [pending, start] = useTransition()
   const [agentes, setAgentes] = useState<Agente[] | null>(null)
   const [agenteId, setAgenteId] = useState<number | null>(null)
-  const [tipo, setTipo] = useState<"FALTA" | "RECLAMO" | "NOVEDAD" | "">("")
+  const [tipo, setTipo] = useState<"" | "Observación" | "Reclamo">("")
   const [descripcion, setDescripcion] = useState("")
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [error, setError] = useState<string | null>(null)
 
   if (agentes === null) {
     start(async () => {
@@ -351,15 +326,23 @@ function NuevaObservacionDialog({
   }
 
   function submit() {
-    if (!agenteId || !tipo || !descripcion) return
+    setError(null)
+    if (!agenteId || !tipo || !descripcion) {
+      setError("Todos los campos son obligatorios")
+      return
+    }
     start(async () => {
-      await createObservacion({
-        agente_id: agenteId,
-        tipo,
-        descripcion,
-        fecha: new Date(fecha).toISOString(),
-      })
-      onDone()
+      try {
+        await createObservacion({
+          agente_id: agenteId,
+          tipo,
+          descripcion,
+          fecha: new Date(fecha).toISOString(),
+        })
+        onDone()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
     })
   }
 
@@ -402,8 +385,8 @@ function NuevaObservacionDialog({
 
           <div>
             <Label className="mb-1.5 block text-sm font-semibold">Tipo</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["FALTA", "RECLAMO", "NOVEDAD"] as const).map((t) => {
+            <div className="grid grid-cols-2 gap-2">
+              {(["Observación", "Reclamo"] as const).map((t) => {
                 const config = tipoConfig[t]
                 const Icon = config.icon
                 return (
@@ -412,9 +395,7 @@ function NuevaObservacionDialog({
                     onClick={() => setTipo(t)}
                     className={cn(
                       "flex flex-col items-center gap-1 rounded-xl py-3 text-xs font-semibold transition-colors",
-                      tipo === t
-                        ? `${config.bg} ${config.color}`
-                        : "bg-muted text-muted-foreground",
+                      tipo === t ? `${config.bg} ${config.color}` : "bg-muted text-muted-foreground",
                     )}
                   >
                     <Icon className="h-5 w-5" />
@@ -437,6 +418,7 @@ function NuevaObservacionDialog({
           </div>
         </div>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar

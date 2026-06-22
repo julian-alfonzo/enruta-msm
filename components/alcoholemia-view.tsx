@@ -22,9 +22,17 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-type AgenteControl = Agente & {
-  ultimo_control: { resultado: string; graduacion: number | null; fecha: string } | null
+type UltimoControl = {
+  id: number
+  fecha: string
+  resultado: "Positivo" | "Negativo"
+  graduacion: number | null
+  servicio_extra: string | null
+  observacion: string | null
+  created_at: string
 }
+
+type AgenteControl = Agente & { ultimo_control: UltimoControl | null }
 
 type Stats = { total: number; con_control: number; positivos: number; negativos: number }
 
@@ -54,8 +62,8 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
   const cards = [
     { label: "Total", value: stats.total, color: "text-primary" },
     { label: "Con control", value: stats.con_control, color: "text-chart-2" },
-    { label: "POSITIVO", value: stats.positivos, color: "text-chart-2" },
-    { label: "NEGATIVO", value: stats.negativos, color: "text-destructive" },
+    { label: "Positivo", value: stats.positivos, color: "text-chart-2" },
+    { label: "Negativo", value: stats.negativos, color: "text-destructive" },
   ]
 
   return (
@@ -106,7 +114,7 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
                 <span
                   className={cn(
                     "text-xs font-bold",
-                    a.ultimo_control.resultado === "POSITIVO" ? "text-chart-2" : "text-destructive",
+                    a.ultimo_control.resultado === "Positivo" ? "text-chart-2" : "text-destructive",
                   )}
                 >
                   {a.ultimo_control.resultado}
@@ -149,6 +157,8 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
   )
 }
 
+const SERVICIOS = ["Cumpliendo servicio", "Hora extra"] as const
+
 function NuevoControlDialog({
   agente,
   onClose,
@@ -159,25 +169,41 @@ function NuevoControlDialog({
   onDone: () => void
 }) {
   const [pending, start] = useTransition()
-  const [resultado, setResultado] = useState<"POSITIVO" | "NEGATIVO" | "">("")
-  const [servicioExtra, setServicioExtra] = useState("Servicio Ordinario")
+  const [error, setError] = useState<string | null>(null)
+  const [resultado, setResultado] = useState<"Positivo" | "Negativo" | "">("")
+  const [servicioExtra, setServicioExtra] = useState<string>("Cumpliendo servicio")
   const [graduacion, setGraduacion] = useState("")
   const [observacion, setObservacion] = useState("")
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
 
   function submit() {
-    if (!resultado) return
+    setError(null)
+    if (!resultado) {
+      setError("Seleccioná un resultado")
+      return
+    }
+    if (resultado === "Positivo") {
+      const g = Number(graduacion)
+      if (!graduacion || isNaN(g) || g < 0.01 || g > 9.99) {
+        setError("La graduación debe estar entre 0.01 y 9.99")
+        return
+      }
+    }
     start(async () => {
-      await createControl({
-        agente_id: agente.id,
-        resultado,
-        graduacion: graduacion ? Number(graduacion) : undefined,
-        servicio_extra: servicioExtra || undefined,
-        observacion: observacion || undefined,
-        fecha: new Date(fecha).toISOString(),
-      })
-      onDone()
-      onClose()
+      try {
+        await createControl({
+          agente_id: agente.id,
+          resultado,
+          graduacion: resultado === "Positivo" ? Number(graduacion) : undefined,
+          servicio_extra: servicioExtra,
+          observacion: observacion || undefined,
+          fecha: new Date(fecha).toISOString(),
+        })
+        onDone()
+        onClose()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
     })
   }
 
@@ -204,32 +230,34 @@ function NuevoControlDialog({
             <Label className="mb-1.5 block text-sm font-semibold">Resultado</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setResultado("POSITIVO")}
+                onClick={() => setResultado("Positivo")}
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
-                  resultado === "POSITIVO" ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
+                  resultado === "Positivo" ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
                 )}
               >
-                <CheckCircle2 className="h-4 w-4" /> POSITIVO
+                <CheckCircle2 className="h-4 w-4" /> Positivo
               </button>
               <button
-                onClick={() => setResultado("NEGATIVO")}
+                onClick={() => setResultado("Negativo")}
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
-                  resultado === "NEGATIVO" ? "bg-destructive text-white" : "bg-muted text-muted-foreground",
+                  resultado === "Negativo" ? "bg-destructive text-white" : "bg-muted text-muted-foreground",
                 )}
               >
-                <XCircle className="h-4 w-4" /> NEGATIVO
+                <XCircle className="h-4 w-4" /> Negativo
               </button>
             </div>
           </div>
 
-          {resultado === "POSITIVO" && (
+          {resultado === "Positivo" && (
             <div>
               <Label className="mb-1.5 block text-sm font-semibold">Graduación (g/L)</Label>
               <Input
                 type="number"
                 step="0.01"
+                min="0.01"
+                max="9.99"
                 value={graduacion}
                 onChange={(e) => setGraduacion(e.target.value)}
                 placeholder="0.24"
@@ -239,18 +267,18 @@ function NuevoControlDialog({
           )}
 
           <div>
-            <Label className="mb-1.5 block text-sm font-semibold">Servicio extra</Label>
+            <Label className="mb-1.5 block text-sm font-semibold">Servicio</Label>
             <div className="grid grid-cols-2 gap-2">
-              {["Servicio Ordinario", "Horas Extra"].map((t) => (
+              {SERVICIOS.map((s) => (
                 <button
-                  key={t}
-                  onClick={() => setServicioExtra(t)}
+                  key={s}
+                  onClick={() => setServicioExtra(s)}
                   className={cn(
                     "rounded-xl py-3 text-sm font-semibold transition-colors",
-                    servicioExtra === t ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
+                    servicioExtra === s ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
                   )}
                 >
-                  {t}
+                  {s}
                 </button>
               ))}
             </div>
@@ -264,11 +292,12 @@ function NuevoControlDialog({
           />
         </div>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={pending || !resultado}>
+          <Button onClick={submit} disabled={pending}>
             {pending ? "Guardando..." : "Guardar Control"}
           </Button>
         </DialogFooter>
@@ -336,22 +365,25 @@ function DetalleAgenteDialog({
           )}
           {controles?.map((c) => (
             <div key={c.id} className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-border">
-              {c.resultado === "POSITIVO" ? (
+              {c.resultado === "Positivo" ? (
                 <CheckCircle2 className="h-7 w-7 text-chart-2" />
               ) : (
                 <XCircle className="h-7 w-7 text-destructive" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold">
-                  <span className={c.resultado === "POSITIVO" ? "text-chart-2" : "text-destructive"}>
+                  <span className={c.resultado === "Positivo" ? "text-chart-2" : "text-destructive"}>
                     {c.resultado}
                   </span>{" "}
                   {c.graduacion != null && (
                     <span className="text-foreground">({Number(c.graduacion).toFixed(2)}g/L)</span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">{fmtFecha(c.fecha)}</p>
-                <p className="text-xs text-primary">{c.servicio_extra}</p>
+                <p className="text-xs text-muted-foreground">
+                  {typeof c.fecha === "string" ? c.fecha.slice(0, 10) : String(c.fecha)}
+                </p>
+                {c.servicio_extra && <p className="text-xs text-primary">{c.servicio_extra}</p>}
+                {c.observacion && <p className="text-xs text-muted-foreground">{c.observacion}</p>}
               </div>
               <button
                 onClick={() => eliminar(c.id)}

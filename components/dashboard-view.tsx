@@ -1,14 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { User, Users, Camera, FileBarChart, ChevronRight } from "lucide-react"
+import { User, Users, Camera, FileBarChart, ChevronRight, AlertCircle } from "lucide-react"
 import type { Agente } from "@/lib/db"
 
 type Stats = {
   total: number
   total_controles: number
   positivos: number
-  negativos: number
   observaciones_abiertas: number
 }
 
@@ -26,15 +25,15 @@ export function DashboardView({ stats, disponibles }: { stats: Stats; disponible
   const cards = [
     { label: "Total agentes", value: stats.total, icon: Users, color: "text-primary" },
     { label: "Controles", value: stats.total_controles, icon: Camera, color: "text-chart-2" },
-    { label: "Positivos", value: stats.positivos, icon: User, color: "text-destructive" },
-    { label: "Observaciones abiertas", value: stats.observaciones_abiertas, icon: FileBarChart, color: "text-foreground" },
+    { label: "Positivos", value: stats.positivos, icon: AlertCircle, color: "text-destructive" },
+    { label: "Observ. abiertas", value: stats.observaciones_abiertas, icon: User, color: "text-foreground" },
   ]
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground lg:text-3xl">Panel de Administración</h2>
-        <p className="text-sm text-muted-foreground">Resumen del día</p>
+        <p className="text-sm text-muted-foreground">Resumen general</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

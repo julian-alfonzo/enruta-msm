@@ -16,7 +16,10 @@ async function tableExists(name: string): Promise<boolean> {
   return rows.length > 0
 }
 
-async function columnInfo(table: string, column: string): Promise<{ data_type: string; is_nullable: string; column_default: string | null } | null> {
+async function columnInfo(
+  table: string,
+  column: string,
+): Promise<{ data_type: string; is_nullable: string; column_default: string | null } | null> {
   const db = getDb()
   const rows = (await db.query(
     `SELECT data_type, is_nullable, column_default
@@ -40,313 +43,279 @@ async function indexExists(name: string): Promise<boolean> {
   return rows.length > 0
 }
 
+async function fkConstraint(table: string, column: string): Promise<string | null> {
+  const db = getDb()
+  const rows = (await db.query(
+    `SELECT constraint_name FROM information_schema.key_column_usage
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+     LIMIT 1`,
+    [table, column],
+  )) as Array<{ constraint_name: string }>
+  return rows[0]?.constraint_name ?? null
+}
+
 async function exec(sqlText: string) {
   const db = getDb()
   await db.query(sqlText, [])
 }
 
-function fmtTsTz(): string {
-  return `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`
+function isTargetType(current: string, target: string): boolean {
+  const norm = (s: string) => s.replace(/\s*with time zone$/, "").replace(/^character varying$/, "text")
+  return norm(current) === norm(target)
 }
-
-function fmtTs(): string {
-  return `'YYYY-MM-DD"T"HH24:MI:SS'`
-}
-
-async function migrateAgentes() {
-  const exists = await tableExists("agentes")
-  if (!exists) {
-    console.log("✓ agentes: no existe, se crea desde cero")
-    await exec(`
-      CREATE TABLE agentes (
-        id SERIAL PRIMARY KEY,
-        legajo TEXT UNIQUE NOT NULL,
-        apellido_nombre TEXT NOT NULL,
-        fecha_ingreso TEXT,
-        dependencia TEXT,
-        cargo TEXT,
-        turno TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    `)
-    return
-  }
-
-  if (!(await columnExists("agentes", "turno"))) {
-    await exec(`ALTER TABLE agentes ADD COLUMN turno TEXT`)
-    console.log("  + turno")
-  }
-  if (!(await columnExists("agentes", "updated_at"))) {
-    await exec(`ALTER TABLE agentes ADD COLUMN updated_at TEXT`)
-    console.log("  + updated_at")
-  }
-
-  if (await columnExists("agentes", "apellido_nombre")) {
-    console.log("= agentes: ya migrada")
-    return
-  }
-
-  console.log("→ agentes: migrando columnas legacy → modelo Flutter")
-
-  if (await columnExists("agentes", "nombre")) {
-    await exec(`ALTER TABLE agentes RENAME COLUMN nombre TO apellido_nombre`)
-    console.log("  · nombre → apellido_nombre")
-  }
-  if (!(await columnExists("agentes", "fecha_ingreso"))) {
-    await exec(`ALTER TABLE agentes ADD COLUMN fecha_ingreso TEXT`)
-    console.log("  + fecha_ingreso")
-  }
-
-  for (const col of ["dni", "telefono", "tipo", "activo", "en_servicio", "horas_mensuales", "horas_extra"]) {
-    if (await columnExists("agentes", col)) {
-      await exec(`ALTER TABLE agentes DROP COLUMN ${col}`)
-      console.log(`  - ${col}`)
-    }
-  }
-}
-
-async function migrateControlesAlcoholemia() {
-  if (await tableExists("controles_alcoholemia")) {
-    console.log("= controles_alcoholemia: ya existe")
-    return
-  }
-
-  if (await tableExists("alcoholemia_controles")) {
-    console.log("→ controles_alcoholemia: renombrando desde alcoholemia_controles")
-    await exec(`ALTER TABLE alcoholemia_controles RENAME TO controles_alcoholemia`)
-  } else {
-    console.log("✓ controles_alcoholemia: no existe, se crea desde cero")
-    await exec(`
-      CREATE TABLE controles_alcoholemia (
-        id SERIAL PRIMARY KEY,
-        agente_id INTEGER NOT NULL REFERENCES agentes(id) ON DELETE CASCADE,
-        fecha TEXT NOT NULL,
-        resultado TEXT NOT NULL,
-        graduacion REAL,
-        servicio_extra TEXT,
-        observacion TEXT,
-        created_at TEXT
-      )
-    `)
-    return
-  }
-
-  if (await columnExists("controles_alcoholemia", "valor")) {
-    await exec(`ALTER TABLE controles_alcoholemia RENAME COLUMN valor TO graduacion`)
-    console.log("  · valor → graduacion")
-  }
-  if (await columnExists("controles_alcoholemia", "tipo_servicio")) {
-    await exec(`ALTER TABLE controles_alcoholemia RENAME COLUMN tipo_servicio TO servicio_extra`)
-    console.log("  · tipo_servicio → servicio_extra")
-  }
-  if (await columnExists("controles_alcoholemia", "observaciones")) {
-    await exec(`ALTER TABLE controles_alcoholemia RENAME COLUMN observaciones TO observacion`)
-    console.log("  · observaciones → observacion")
-  }
-  if (await columnExists("controles_alcoholemia", "fecha_control")) {
-    await exec(`ALTER TABLE controles_alcoholemia RENAME COLUMN fecha_control TO fecha`)
-    console.log("  · fecha_control → fecha")
-  }
-
-  for (const col of ["turno", "quien_testea", "legajo"]) {
-    if (await columnExists("controles_alcoholemia", col)) {
-      await exec(`ALTER TABLE controles_alcoholemia DROP COLUMN ${col}`)
-      console.log(`  - ${col}`)
-    }
-  }
-}
-
-async function migrateObservacionesReclamos() {
-  if (await tableExists("observaciones_reclamos")) {
-    console.log("= observaciones_reclamos: ya existe")
-    return
-  }
-
-  if (await tableExists("observaciones")) {
-    console.log("→ observaciones_reclamos: transformando desde observaciones")
-
-    if (await columnExists("observaciones", "estado")) {
-      await exec(`ALTER TABLE observaciones ADD COLUMN resuelto BOOLEAN`)
-      await exec(`UPDATE observaciones SET resuelto = (estado = 'CERRADO')`)
-      await exec(`ALTER TABLE observaciones ALTER COLUMN resuelto SET DEFAULT FALSE`)
-      await exec(`ALTER TABLE observaciones ALTER COLUMN resuelto SET NOT NULL`)
-      await exec(`ALTER TABLE observaciones DROP COLUMN estado`)
-      console.log("  · estado (ABIERTO/CERRADO) → resuelto (BOOLEAN)")
-    }
-
-    await exec(`ALTER TABLE observaciones RENAME TO observaciones_reclamos`)
-    console.log("  · observaciones → observaciones_reclamos")
-  } else {
-    console.log("✓ observaciones_reclamos: no existe, se crea desde cero")
-    await exec(`
-      CREATE TABLE observaciones_reclamos (
-        id SERIAL PRIMARY KEY,
-        agente_id INTEGER NOT NULL REFERENCES agentes(id) ON DELETE CASCADE,
-        tipo TEXT NOT NULL,
-        descripcion TEXT NOT NULL,
-        fecha TEXT NOT NULL,
-        resuelto BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TEXT
-      )
-    `)
-  }
-}
-
-async function ensureAgentesBase() {
-  if (!(await tableExists("agentes"))) {
-    await exec(`
-      CREATE TABLE agentes (
-        id SERIAL PRIMARY KEY,
-        legajo TEXT UNIQUE NOT NULL,
-        apellido_nombre TEXT NOT NULL,
-        fecha_ingreso TEXT,
-        dependencia TEXT,
-        cargo TEXT,
-        turno TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    `)
-  }
-}
-
-async function createIndexes() {
-  await exec(`CREATE INDEX IF NOT EXISTS idx_controles_agente_fecha ON controles_alcoholemia(agente_id, fecha)`)
-  console.log("✓ index idx_controles_agente_fecha")
-  await exec(`CREATE INDEX IF NOT EXISTS idx_observaciones_agente ON observaciones_reclamos(agente_id)`)
-  console.log("✓ index idx_observaciones_agente")
-}
-
-// --- Alineación estricta con modelo Flutter ---
 
 async function alignAgentes() {
-  console.log("\n→ agentes: alineando con modelo Flutter")
-  const cols = [
-    { name: "created_at", fmt: fmtTsTz() },
-    { name: "updated_at", fmt: fmtTs() },
-  ]
-  for (const c of cols) {
-    const info = await columnInfo("agentes", c.name)
-    if (!info) continue
-    if (info.data_type === "text" && info.column_default === null) continue
+  console.log("\n→ agentes: alineando con API.md")
 
-    if (info.column_default !== null) {
-      await exec(`ALTER TABLE agentes ALTER COLUMN ${c.name} DROP DEFAULT`)
-      console.log(`  · ${c.name}: drop default`)
+  // legajo text → varchar(20)
+  let info = await columnInfo("agentes", "legajo")
+  if (info && !isTargetType(info.data_type, "varchar(20)")) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN legajo TYPE VARCHAR(20) USING legajo::VARCHAR(20)`)
+    console.log("  · legajo: text → varchar(20)")
+  }
+
+  // apellido_nombre text → varchar(200)
+  info = await columnInfo("agentes", "apellido_nombre")
+  if (info && !isTargetType(info.data_type, "varchar(200)")) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN apellido_nombre TYPE VARCHAR(200) USING apellido_nombre::VARCHAR(200)`)
+    console.log("  · apellido_nombre: text → varchar(200)")
+  }
+
+  // fecha_ingreso text → varchar(10)
+  info = await columnInfo("agentes", "fecha_ingreso")
+  if (info && !isTargetType(info.data_type, "varchar(10)")) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN fecha_ingreso TYPE VARCHAR(10) USING fecha_ingreso::VARCHAR(10)`)
+    console.log("  · fecha_ingreso: text → varchar(10)")
+  }
+
+  // dependencia text → varchar(200)
+  info = await columnInfo("agentes", "dependencia")
+  if (info && !isTargetType(info.data_type, "varchar(200)")) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN dependencia TYPE VARCHAR(200) USING dependencia::VARCHAR(200)`)
+    console.log("  · dependencia: text → varchar(200)")
+  }
+
+  // cargo text → varchar(200)
+  info = await columnInfo("agentes", "cargo")
+  if (info && !isTargetType(info.data_type, "varchar(200)")) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN cargo TYPE VARCHAR(200) USING cargo::VARCHAR(200)`)
+    console.log("  · cargo: text → varchar(200)")
+  }
+
+  // turno varchar(100) → varchar(50)
+  info = await columnInfo("agentes", "turno")
+  if (info && info.data_type === "character varying" && !info.column_default) {
+    await exec(`ALTER TABLE agentes ALTER COLUMN turno TYPE VARCHAR(50)`)
+    console.log("  · turno: varchar(100) → varchar(50)")
+  }
+
+  // created_at text → timestamptz NOT NULL DEFAULT NOW()
+  info = await columnInfo("agentes", "created_at")
+  if (info) {
+    const isTarget = isTargetType(info.data_type, "timestamp with time zone")
+    if (!isTarget) {
+      await exec(
+        `ALTER TABLE agentes ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::TIMESTAMPTZ`,
+      )
+      console.log("  · created_at: text → timestamptz")
     }
-    if (info.data_type !== "text") {
-      const colExpr = info.data_type.includes("time zone")
-        ? `to_char(${c.name} AT TIME ZONE 'UTC', ${c.fmt})`
-        : `to_char(${c.name}, ${c.fmt})`
-      await exec(`ALTER TABLE agentes ALTER COLUMN ${c.name} TYPE TEXT USING (${colExpr})`)
-      console.log(`  · ${c.name}: ${info.data_type} → text`)
+    if (info.column_default === null) {
+      await exec(`ALTER TABLE agentes ALTER COLUMN created_at SET DEFAULT NOW()`)
+      console.log("  · created_at: set default NOW()")
     }
+    if (info.is_nullable === "YES") {
+      await exec(
+        `UPDATE agentes SET created_at = NOW() WHERE created_at IS NULL`,
+      )
+      await exec(`ALTER TABLE agentes ALTER COLUMN created_at SET NOT NULL`)
+      console.log("  · created_at: set NOT NULL")
+    }
+  }
+
+  // updated_at text → timestamptz NOT NULL DEFAULT NOW()
+  info = await columnInfo("agentes", "updated_at")
+  if (info) {
+    const isTarget = isTargetType(info.data_type, "timestamp with time zone")
+    if (!isTarget) {
+      await exec(
+        `ALTER TABLE agentes ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at::TIMESTAMPTZ`,
+      )
+      console.log("  · updated_at: text → timestamptz")
+    }
+    if (info.column_default === null) {
+      await exec(`ALTER TABLE agentes ALTER COLUMN updated_at SET DEFAULT NOW()`)
+      console.log("  · updated_at: set default NOW()")
+    }
+    if (info.is_nullable === "YES") {
+      await exec(
+        `UPDATE agentes SET updated_at = NOW() WHERE updated_at IS NULL`,
+      )
+      await exec(`ALTER TABLE agentes ALTER COLUMN updated_at SET NOT NULL`)
+      console.log("  · updated_at: set NOT NULL")
+    }
+  }
+
+  // ADD deleted_at TIMESTAMPTZ NULL
+  if (!(await columnExists("agentes", "deleted_at"))) {
+    await exec(`ALTER TABLE agentes ADD COLUMN deleted_at TIMESTAMPTZ NULL`)
+    console.log("  + deleted_at: timestamptz NULL")
+  }
+
+  // índices
+  if (!(await indexExists("idx_agentes_apellido_nombre"))) {
+    await exec(`CREATE INDEX idx_agentes_apellido_nombre ON agentes(apellido_nombre)`)
+    console.log("  + idx_agentes_apellido_nombre")
+  }
+  if (!(await indexExists("idx_agentes_dependencia"))) {
+    await exec(`CREATE INDEX idx_agentes_dependencia ON agentes(dependencia)`)
+    console.log("  + idx_agentes_dependencia")
+  }
+  if (!(await indexExists("idx_agentes_deleted_at"))) {
+    await exec(`CREATE INDEX idx_agentes_deleted_at ON agentes(deleted_at) WHERE deleted_at IS NULL`)
+    console.log("  + idx_agentes_deleted_at (parcial)")
   }
 }
 
 async function alignControles() {
-  console.log("\n→ controles_alcoholemia: alineando con modelo Flutter")
+  console.log("\n→ controles_alcoholemia: alineando con API.md")
 
-  for (const c of [
-    { name: "created_at", fmt: fmtTsTz() },
-    { name: "fecha", fmt: fmtTsTz() },
-  ]) {
-    const info = await columnInfo("controles_alcoholemia", c.name)
-    if (!info) continue
-    if (info.data_type === "text" && info.column_default === null && (c.name !== "fecha" || info.is_nullable === "NO")) {
-      continue
+  // fecha text → date NOT NULL
+  let info = await columnInfo("controles_alcoholemia", "fecha")
+  if (info && info.data_type !== "date") {
+    await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN fecha TYPE DATE USING fecha::DATE`)
+    console.log("  · fecha: text → date")
+  }
+
+  // graduacion double precision → numeric(4,2)
+  info = await columnInfo("controles_alcoholemia", "graduacion")
+  if (info && info.data_type === "double precision") {
+    await exec(
+      `ALTER TABLE controles_alcoholemia ALTER COLUMN graduacion TYPE NUMERIC(4,2) USING graduacion::NUMERIC(4,2)`,
+    )
+    console.log("  · graduacion: double precision → numeric(4,2)")
+  }
+
+  // servicio_extra text → varchar(50)
+  info = await columnInfo("controles_alcoholemia", "servicio_extra")
+  if (info && info.data_type === "text") {
+    await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN servicio_extra TYPE VARCHAR(50)`)
+    console.log("  · servicio_extra: text → varchar(50)")
+  }
+
+  // created_at text → timestamptz NOT NULL DEFAULT NOW()
+  info = await columnInfo("controles_alcoholemia", "created_at")
+  if (info) {
+    const isTarget = isTargetType(info.data_type, "timestamp with time zone")
+    if (!isTarget) {
+      await exec(
+        `ALTER TABLE controles_alcoholemia ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::TIMESTAMPTZ`,
+      )
+      console.log("  · created_at: text → timestamptz")
     }
-    if (info.column_default !== null) {
-      await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN ${c.name} DROP DEFAULT`)
-      console.log(`  · ${c.name}: drop default`)
+    if (info.column_default === null) {
+      await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN created_at SET DEFAULT NOW()`)
+      console.log("  · created_at: set default NOW()")
     }
-    if (info.data_type !== "text") {
-      const colExpr = info.data_type.includes("time zone")
-        ? `to_char(${c.name} AT TIME ZONE 'UTC', ${c.fmt})`
-        : `to_char(${c.name}, ${c.fmt})`
-      await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN ${c.name} TYPE TEXT USING (${colExpr})`)
-      console.log(`  · ${c.name}: ${info.data_type} → text`)
+    if (info.is_nullable === "YES") {
+      await exec(
+        `UPDATE controles_alcoholemia SET created_at = NOW() WHERE created_at IS NULL`,
+      )
+      await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN created_at SET NOT NULL`)
+      console.log("  · created_at: set NOT NULL")
     }
   }
 
-  const fechaInfo = await columnInfo("controles_alcoholemia", "fecha")
-  if (fechaInfo && fechaInfo.is_nullable === "YES") {
-    const nullCount = await getDb().query(`SELECT COUNT(*)::int AS n FROM controles_alcoholemia WHERE fecha IS NULL`)
-    if (nullCount[0].n > 0) {
-      await exec(`UPDATE controles_alcoholemia SET fecha = to_char(now() AT TIME ZONE 'UTC', ${fmtTsTz()}) WHERE fecha IS NULL`)
-      console.log(`  · fecha: rellenó ${nullCount[0].n} filas NULL`)
-    }
-    await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN fecha SET NOT NULL`)
-    console.log("  · fecha: SET NOT NULL")
-  }
+  // Convertir valores de resultado a formato API.md
+  await exec(
+    `UPDATE controles_alcoholemia SET resultado = 'Positivo' WHERE resultado = 'POSITIVO'`,
+  )
+  await exec(
+    `UPDATE controles_alcoholemia SET resultado = 'Negativo' WHERE resultado = 'NEGATIVO'`,
+  )
 
-  const graduacion = await columnInfo("controles_alcoholemia", "graduacion")
-  if (graduacion && graduacion.data_type === "numeric") {
-    await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN graduacion TYPE DOUBLE PRECISION USING graduacion::DOUBLE PRECISION`)
-    console.log("  · graduacion: numeric → double precision")
+  // FK: CASCADE → RESTRICT
+  const fk = await fkConstraint("controles_alcoholemia", "agente_id")
+  if (fk) {
+    await exec(`ALTER TABLE controles_alcoholemia DROP CONSTRAINT ${fk}`)
+    console.log(`  · FK ${fk}: dropped`)
   }
+  await exec(
+    `ALTER TABLE controles_alcoholemia ADD CONSTRAINT controles_alcoholemia_agente_id_fkey FOREIGN KEY (agente_id) REFERENCES agentes(id) ON DELETE RESTRICT`,
+  )
+  console.log("  · FK: ON DELETE RESTRICT")
 
-  const servicioExtra = await columnInfo("controles_alcoholemia", "servicio_extra")
-  if (servicioExtra && servicioExtra.column_default !== null) {
-    await exec(`ALTER TABLE controles_alcoholemia ALTER COLUMN servicio_extra DROP DEFAULT`)
-    console.log("  · servicio_extra: drop default")
+  if (!(await indexExists("idx_controles_fecha"))) {
+    await exec(`CREATE INDEX idx_controles_fecha ON controles_alcoholemia(fecha)`)
+    console.log("  + idx_controles_fecha")
   }
 }
 
 async function alignObservaciones() {
-  console.log("\n→ observaciones_reclamos: alineando con modelo Flutter")
-  for (const c of [
-    { name: "fecha", fmt: fmtTs() },
-    { name: "created_at", fmt: fmtTs() },
-  ]) {
-    const info = await columnInfo("observaciones_reclamos", c.name)
-    if (!info) continue
-    if (info.data_type === "text" && info.column_default === null) continue
-    if (info.column_default !== null) {
-      await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN ${c.name} DROP DEFAULT`)
-      console.log(`  · ${c.name}: drop default`)
-    }
-    if (info.data_type !== "text") {
-      const colExpr = info.data_type.includes("time zone")
-        ? `to_char(${c.name} AT TIME ZONE 'UTC', ${c.fmt})`
-        : `to_char(${c.name}, ${c.fmt})`
-      await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN ${c.name} TYPE TEXT USING (${colExpr})`)
-      console.log(`  · ${c.name}: ${info.data_type} → text`)
-    }
-  }
-}
+  console.log("\n→ observaciones_reclamos: alineando con API.md")
 
-async function dropLegacyIndexes() {
-  console.log("\n→ Eliminando índices legacy")
-  const legacy = [
-    "idx_alco_agente",
-    "idx_observaciones_agente_id",
-    "idx_observaciones_tipo",
-    "idx_observaciones_fecha",
-  ]
-  for (const ix of legacy) {
-    if (await indexExists(ix)) {
-      await exec(`DROP INDEX ${ix}`)
-      console.log(`  - ${ix}`)
+  // fecha text → date NOT NULL
+  let info = await columnInfo("observaciones_reclamos", "fecha")
+  if (info && info.data_type !== "date") {
+    await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN fecha TYPE DATE USING fecha::DATE`)
+    console.log("  · fecha: text → date")
+  }
+
+  // tipo varchar(20) → varchar(50)
+  info = await columnInfo("observaciones_reclamos", "tipo")
+  if (info && info.data_type === "character varying") {
+    await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN tipo TYPE VARCHAR(50)`)
+    console.log("  · tipo: varchar(20) → varchar(50)")
+  }
+
+  // created_at text → timestamptz NOT NULL DEFAULT NOW()
+  info = await columnInfo("observaciones_reclamos", "created_at")
+  if (info) {
+    const isTarget = isTargetType(info.data_type, "timestamp with time zone")
+    if (!isTarget) {
+      await exec(
+        `ALTER TABLE observaciones_reclamos ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::TIMESTAMPTZ`,
+      )
+      console.log("  · created_at: text → timestamptz")
+    }
+    if (info.column_default === null) {
+      await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN created_at SET DEFAULT NOW()`)
+      console.log("  · created_at: set default NOW()")
+    }
+    if (info.is_nullable === "YES") {
+      await exec(
+        `UPDATE observaciones_reclamos SET created_at = NOW() WHERE created_at IS NULL`,
+      )
+      await exec(`ALTER TABLE observaciones_reclamos ALTER COLUMN created_at SET NOT NULL`)
+      console.log("  · created_at: set NOT NULL")
     }
   }
+
+  // Convertir valores de tipo a formato API.md
+  await exec(`UPDATE observaciones_reclamos SET tipo = 'Observación' WHERE tipo = 'FALTA'`)
+  await exec(`UPDATE observaciones_reclamos SET tipo = 'Reclamo' WHERE tipo = 'RECLAMO'`)
+  await exec(`UPDATE observaciones_reclamos SET tipo = 'Observación' WHERE tipo = 'NOVEDAD'`)
+
+  // FK: CASCADE → RESTRICT
+  const fk = await fkConstraint("observaciones_reclamos", "agente_id")
+  if (fk) {
+    await exec(`ALTER TABLE observaciones_reclamos DROP CONSTRAINT ${fk}`)
+    console.log(`  · FK ${fk}: dropped`)
+  }
+  await exec(
+    `ALTER TABLE observaciones_reclamos ADD CONSTRAINT observaciones_reclamos_agente_id_fkey FOREIGN KEY (agente_id) REFERENCES agentes(id) ON DELETE RESTRICT`,
+  )
+  console.log("  · FK: ON DELETE RESTRICT")
 }
 
 async function main() {
-  console.log("=== Migración al modelo Flutter EnRuta ===\n")
-  await ensureAgentesBase()
-  await migrateAgentes()
-  await migrateControlesAlcoholemia()
-  await migrateObservacionesReclamos()
-  await createIndexes()
-
-  console.log("\n=== Alineación con modelo Flutter ===")
+  console.log("=== Migración al esquema API.md (Postgres) ===\n")
+  if (!(await tableExists("agentes"))) {
+    console.log("✗ No existe la tabla 'agentes'. Corré primero la migración inicial.")
+    process.exit(1)
+  }
   await alignAgentes()
   await alignControles()
   await alignObservaciones()
-  await dropLegacyIndexes()
-
   console.log("\n✓ Migración completada")
 }
 
