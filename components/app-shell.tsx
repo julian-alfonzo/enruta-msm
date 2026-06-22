@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </nav>
             </SheetContent>
           </Sheet>
-          <h1 className="text-lg font-semibold">Alcoholemia</h1>
+          <h1 className="text-lg font-semibold">{baseTitle}</h1>
           <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-primary-foreground/70">
             <Users className="h-5 w-5" />
           </div>
