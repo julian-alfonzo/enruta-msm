@@ -146,37 +146,37 @@ export function ReporteSemanalClient() {
         </summary>
         <div className="border-t border-border p-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            Las celdas de la columna <strong>Licencia</strong> se pintan según el estado del registro.
+            Los colores se aplican en la columna <strong>Verificacion</strong> según el tipo de alerta.
           </p>
-          <div className="grid gap-3 text-sm sm:grid-cols-2">
+          <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3">
               <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-destructive" />
               <div>
-                <p className="font-semibold text-foreground">Rojo · VACIO</p>
+                <p className="font-semibold text-foreground">Rojo</p>
                 <p className="text-xs text-muted-foreground">
-                  El motivo de inasistencia no se pudo mapear a ningún código de licencia conocido.
-                  Se revisa contra el nomenclador, los mapeos manuales y el catálogo de validación.
-                  Si no hay coincidencia exacta ni por subcadena, se marca como VACIO.
+                  <strong>Motivo No Reconocido.</strong> El motivo de inasistencia no se pudo mapear a ningún código. La columna Licencia muestra &quot;-&quot;.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-xl bg-orange-100 p-3">
+              <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-orange-400" />
+              <div>
+                <p className="font-semibold text-foreground">Naranja</p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Conflicto mismo día.</strong> El mismo legajo en el mismo día tiene distintos códigos de licencia (ej: &quot;Enfermo (4) | Examen (12)&quot;).
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2 rounded-xl bg-yellow-50 p-3">
               <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-yellow-300" />
               <div>
-                <p className="font-semibold text-foreground">Amarillo · Revisar</p>
+                <p className="font-semibold text-foreground">Amarillo</p>
                 <p className="text-xs text-muted-foreground">
-                  Se marca cuando:
+                  <strong>Revisar.</strong> Códigos 4 (Enfermo) o 27 (Accidente) repetidos en el mismo legajo, o código 927 (citado por artículo).
                 </p>
-                <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                  <li>El código es <strong>4 (Enfermo)</strong> o <strong>27 (Accidente de trabajo)</strong> y el mismo legajo aparece más de una vez con ese código.</li>
-                  <li>El código es <strong>927</strong> (citado por artículo).</li>
-                </ul>
               </div>
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            <strong>Nota:</strong> Al activar la opción &quot;Incluir verificación de conflictos&quot;, se agrega la columna <strong>Verificacion</strong> que muestra los motivos cuando un mismo legajo en el mismo día tiene distintos códigos de licencia (ej: &quot;Enfermo (4) | Examen (12)&quot;).
-          </p>
         </div>
       </details>
 

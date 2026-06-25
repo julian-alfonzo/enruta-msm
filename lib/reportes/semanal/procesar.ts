@@ -391,6 +391,16 @@ export function generarExcelSemanal(
     }
   }
 
+  for (const e of entradasOrdenadas) {
+    if (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1) {
+      const msg = "conflicto 'enfermo' o 'accidente trabajo'"
+      e.verificacion = e.verificacion ? e.verificacion + " | " + msg : msg
+    }
+    if (e.flag_927 && !e.verificacion) {
+      e.verificacion = "Citado por artículo (927)"
+    }
+  }
+
   const workbook = new ExcelJS.Workbook()
   const ws = workbook.addWorksheet("Datos")
   ws.columns = [
@@ -411,14 +421,11 @@ export function generarExcelSemanal(
     const serialInicio = dateToSerial(e.fecha_inicio)
     const serialFin = dateToSerial(e.fecha_fin)
     const isVacio = e.codigo == null
-    const isHighlight =
-      e.flag_927 ||
-      (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1)
 
     const rowData: Record<string, unknown> = {
       legajo: e.legajo,
       nro_cargo: 1,
-      licencia: isVacio ? "VACIO" : e.codigo,
+      licencia: isVacio ? "-" : e.codigo,
       fecha_inicio: serialInicio,
       fecha_fin: serialFin,
       anio: opciones.ano,
@@ -427,7 +434,8 @@ export function generarExcelSemanal(
       rowData.nombre = e.nombre ?? ""
     }
     if (opciones.incluirVerificacion) {
-      rowData.verificacion = e.verificacion ?? ""
+      const textoVerif = isVacio ? "Motivo No Reconocido" : (e.verificacion ?? "")
+      rowData.verificacion = textoVerif
     }
 
     const row = ws.addRow(rowData)
@@ -441,11 +449,15 @@ export function generarExcelSemanal(
     const fechaFinCell = row.getCell("fecha_fin")
     fechaFinCell.numFmt = "d-mmm"
 
-    const licenciaCell = row.getCell("licencia")
-    if (isVacio) {
-      licenciaCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF0000" } }
-    } else if (isHighlight) {
-      licenciaCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } }
+    if (opciones.incluirVerificacion) {
+      const verificacionCell = row.getCell("verificacion")
+      if (isVacio) {
+        verificacionCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF0000" } }
+      } else if (e.verificacion && e.verificacion.includes(" | ")) {
+        verificacionCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFA500" } }
+      } else if (e.verificacion) {
+        verificacionCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } }
+      }
     }
   }
 

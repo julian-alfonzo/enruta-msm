@@ -759,7 +759,7 @@ describe("generarExcelSemanal highlight", () => {
     const ws = wb.Sheets["Datos"]
     const data: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
     const licenciaIdx = (data[0] as string[]).indexOf("Licencia")
-    expect(data[1][licenciaIdx]).toBe("VACIO")
+    expect(data[1][licenciaIdx]).toBe("-")
   })
 
   it("incluye columna Verificacion cuando hay incluirNombre", async () => {
