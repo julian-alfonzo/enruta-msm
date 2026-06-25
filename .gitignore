@@ -19,3 +19,7 @@ tsconfig.tsbuildinfo
 
 # Generated CSV from excel-to-csv.ts
 alcoholemia_import.csv
+
+# Coverage
+coverage/
+.idea/

@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:import:agentes": "tsx scripts/import-all.ts",
-    "db:import:controles": "tsx scripts/import-controls.ts"
+    "db:import:controles": "tsx scripts/import-controls.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -36,8 +38,10 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.9",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
   }
 }
