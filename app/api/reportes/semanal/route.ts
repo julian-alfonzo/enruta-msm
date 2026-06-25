@@ -19,9 +19,10 @@ export async function POST(req: NextRequest) {
     const { mesStr, mesNum, ano } = extraerMesAno(file.name)
 
     const incluirNombre = (formData.get("incluirNombre") as string) === "true"
+    const incluirVerificacion = (formData.get("incluirVerificacion") as string) === "true"
 
     if (modo === "mes") {
-      const resultado = await generarTodasLasSemanas(buffer, file.name, incluirNombre)
+      const resultado = await generarTodasLasSemanas(buffer, file.name, incluirNombre, incluirVerificacion)
 
       if (resultado.semanas.length === 0) {
         return NextResponse.json(
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
       mesNum,
       ano,
       incluirNombre,
+      incluirVerificacion,
     })
 
     if (resultado.entradas.length === 0) {
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const xlsxBuffer = await generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano, incluirNombre }, resultado.nombreSalida)
+    const xlsxBuffer = await generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano, incluirNombre, incluirVerificacion }, resultado.nombreSalida)
 
     return new NextResponse(xlsxBuffer, {
       status: 200,

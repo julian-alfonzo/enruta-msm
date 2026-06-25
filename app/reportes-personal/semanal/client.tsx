@@ -27,7 +27,8 @@ export function ReporteSemanalClient() {
   const [modo, setModo] = useState<Modo>("semana")
   const [inicio, setInicio] = useState(1)
   const [fin, setFin] = useState(7)
-  const [incluirNombre, setIncluirNombre] = useState(false)
+  const [incluirNombre, setIncluirNombre] = useState(true)
+  const [incluirVerificacion, setIncluirVerificacion] = useState(true)
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<Resultado | null>(null)
@@ -53,6 +54,7 @@ export function ReporteSemanalClient() {
         fd.append("fuente", file)
         fd.append("modo", modo)
         fd.append("incluirNombre", String(incluirNombre))
+        fd.append("incluirVerificacion", String(incluirVerificacion))
         if (modo === "semana") {
           fd.append("inicioSemana", String(inicio))
           fd.append("finSemana", String(fin))
@@ -294,6 +296,16 @@ export function ReporteSemanalClient() {
               className="h-4 w-4 rounded border-border accent-primary"
             />
             Incluir nombre del agente
+          </label>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={incluirVerificacion}
+              onChange={(e) => setIncluirVerificacion(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary"
+            />
+            Incluir verificación de conflictos
           </label>
 
           {error && (

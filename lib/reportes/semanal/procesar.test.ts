@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   extraerMesAno,
   mapearLicencia,
+  marcarConflictos,
   consolidarPorRango,
   agruparPorSemana,
   ordenarEntradas,
@@ -245,6 +246,75 @@ describe("consolidarPorRango", () => {
   it("maneja lista vacia", () => {
     const result = consolidarPorRango([])
     expect(result).toHaveLength(0)
+  })
+})
+
+describe("marcarConflictos", () => {
+  it("no marca nada si no hay conflictos", () => {
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: new Date("2026-05-01T00:00:00Z"), codigo: 4, motivo: "Enfermo" }),
+      makeRegistro({ legajo: 200, fecha: new Date("2026-05-01T00:00:00Z"), codigo: 4, motivo: "Enfermo" }),
+    ]
+    marcarConflictos(regs)
+    expect(regs[0].verificacion).toBeUndefined()
+    expect(regs[1].verificacion).toBeUndefined()
+  })
+
+  it("marca conflicto cuando mismo legajo mismo dia distintos codigos", () => {
+    const d = new Date("2026-05-01T00:00:00Z")
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: d, codigo: 4, motivo: "Enfermo" }),
+      makeRegistro({ legajo: 100, fecha: d, codigo: 12, motivo: "Examen" }),
+    ]
+    marcarConflictos(regs)
+    expect(regs[0].verificacion).toContain("Enfermo")
+    expect(regs[0].verificacion).toContain("Examen")
+    expect(regs[1].verificacion).toEqual(regs[0].verificacion)
+  })
+
+  it("no marca si mismo codigo en mismo dia", () => {
+    const d = new Date("2026-05-01T00:00:00Z")
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: d, codigo: 4, motivo: "Enfermo 1" }),
+      makeRegistro({ legajo: 100, fecha: d, codigo: 4, motivo: "Enfermo 2" }),
+    ]
+    marcarConflictos(regs)
+    expect(regs[0].verificacion).toBeUndefined()
+  })
+
+  it("no marca si mismo legajo pero distinto dia", () => {
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: new Date("2026-05-01T00:00:00Z"), codigo: 4, motivo: "Enfermo" }),
+      makeRegistro({ legajo: 100, fecha: new Date("2026-05-02T00:00:00Z"), codigo: 12, motivo: "Examen" }),
+    ]
+    marcarConflictos(regs)
+    expect(regs[0].verificacion).toBeUndefined()
+    expect(regs[1].verificacion).toBeUndefined()
+  })
+
+  it("ignora registros sin codigo", () => {
+    const d = new Date("2026-05-01T00:00:00Z")
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: d, codigo: null, motivo: null }),
+      makeRegistro({ legajo: 100, fecha: d, codigo: 4, motivo: "Enfermo" }),
+    ]
+    marcarConflictos(regs)
+    expect(regs[0].verificacion).toBeUndefined()
+    expect(regs[1].verificacion).toBeUndefined()
+  })
+
+  it("propaga verificacion a consolidarPorRango", () => {
+    const d = new Date("2026-05-01T00:00:00Z")
+    const regs: Registro[] = [
+      makeRegistro({ legajo: 100, fecha: d, codigo: 4, motivo: "Enfermo", nombre: "Juan" }),
+      makeRegistro({ legajo: 100, fecha: d, codigo: 12, motivo: "Examen", nombre: "Juan" }),
+    ]
+    marcarConflictos(regs)
+    const result = consolidarPorRango(regs)
+    const conflicted = result.filter(e => e.verificacion)
+    expect(conflicted.length).toBeGreaterThan(0)
+    expect(conflicted[0].verificacion).toContain("Enfermo")
+    expect(conflicted[0].verificacion).toContain("Examen")
   })
 })
 
@@ -690,5 +760,18 @@ describe("generarExcelSemanal highlight", () => {
     const data: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
     const licenciaIdx = (data[0] as string[]).indexOf("Licencia")
     expect(data[1][licenciaIdx]).toBe("VACIO")
+  })
+
+  it("incluye columna Verificacion cuando hay incluirNombre", async () => {
+    const entradas: Entrada[] = [
+      { legajo: 100, codigo: 4, fecha_inicio: makeFecha(1), fecha_fin: makeFecha(1), flag_927: false, nombre: "A", verificacion: "Conflicto: test" },
+    ]
+    const buf = await generarExcelSemanal(entradas, { ...opcionesBase, incluirNombre: true, incluirVerificacion: true }, "test.xlsx")
+    const wb = XLSX.read(buf, { type: "array" })
+    const ws = wb.Sheets["Datos"]
+    const data: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
+    expect(data[0]).toContain("Verificacion")
+    const vIdx = (data[0] as string[]).indexOf("Verificacion")
+    expect(data[1][vIdx]).toBe("Conflicto: test")
   })
 })

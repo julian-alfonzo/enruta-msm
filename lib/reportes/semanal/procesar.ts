@@ -139,6 +139,25 @@ export function leerDatosFuente(buffer: ArrayBuffer, mesNum: number, ano: number
   return registros
 }
 
+export function marcarConflictos(registros: Registro[]): void {
+  const grupos = new Map<string, Registro[]>()
+  for (const r of registros) {
+    if (r.codigo == null) continue
+    const k = `${r.legajo}|${r.fecha.getTime()}`
+    if (!grupos.has(k)) grupos.set(k, [])
+    grupos.get(k)!.push(r)
+  }
+  for (const [, items] of grupos) {
+    const codigosUnicos = new Set(items.map((r) => r.codigo))
+    if (codigosUnicos.size <= 1) continue
+    const partes = items.map((r) => `${r.motivo ?? "Sin motivo"} (${r.codigo})`)
+    const mensaje = partes.join(" | ")
+    for (const r of items) {
+      r.verificacion = mensaje
+    }
+  }
+}
+
 export function consolidarPorRango(registros: Registro[]): Entrada[] {
   const resultado: Entrada[] = []
 
@@ -153,6 +172,7 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
       fecha_fin: reg.fecha,
       flag_927: reg.flag_927 ?? false,
       nombre: reg.nombre,
+      verificacion: reg.verificacion,
     })
   }
 
@@ -173,6 +193,7 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
     const firstLegajo = items[0].legajo
     const firstCodigo: number | null = items[0].codigo ?? null
     const firstNombre = items[0].nombre
+    const firstVerificacion = items[0].verificacion
     let inicioRango = fechasOrdenadas[0]
     let finRango = fechasOrdenadas[0]
 
@@ -181,12 +202,12 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
       if (diff === 1) {
         finRango = fechasOrdenadas[i]
       } else {
-        resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre })
+        resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre, verificacion: firstVerificacion })
         inicioRango = fechasOrdenadas[i]
         finRango = fechasOrdenadas[i]
       }
     }
-    resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre })
+    resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre, verificacion: firstVerificacion })
   }
 
   return resultado
@@ -244,6 +265,8 @@ export function procesarParteSemanal(
     registrosConCodigo.push(reg)
   }
 
+  marcarConflictos(registrosConCodigo)
+
   const consolidadas = consolidarPorRango(registrosConCodigo)
 
   const diaInicio = new Date(Date.UTC(opciones.ano, opciones.mesNum - 1, opciones.inicioSemana))
@@ -284,6 +307,7 @@ export async function generarTodasLasSemanas(
   inputBuffer: ArrayBuffer,
   inputFileName: string,
   incluirNombre?: boolean,
+  incluirVerificacion?: boolean,
 ): Promise<{
   semanas: SemanaGenerada[]
   mesStr: string
@@ -320,6 +344,8 @@ export async function generarTodasLasSemanas(
     registrosConCodigo.push(reg)
   }
 
+  marcarConflictos(registrosConCodigo)
+
   const consolidadas = consolidarPorRango(registrosConCodigo)
 
   const lastDay = new Date(ano, mesNum, 0).getDate()
@@ -334,7 +360,7 @@ export async function generarTodasLasSemanas(
     if (entradasSemana.length === 0) continue
 
     const nombreArchivo = `Parte Semanal del ${inicio} al ${fin} de ${mesStr}.xlsx`
-    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano, incluirNombre }, nombreArchivo))
+    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano, incluirNombre, incluirVerificacion }, nombreArchivo))
     semanas.push({ nombreArchivo, buffer, inicio, fin, totalRegistros: entradasSemana.length })
     totalRegistros += entradasSemana.length
   }
@@ -375,6 +401,7 @@ export function generarExcelSemanal(
     { header: "Fecha Fin", key: "fecha_fin", width: 10, style: { numFmt: "d-mmm" } },
     { header: "Año", key: "anio", width: 11.71 },
     ...(opciones.incluirNombre ? [{ header: "Nombre", key: "nombre", width: 25 }] : []),
+    ...(opciones.incluirVerificacion ? [{ header: "Verificacion", key: "verificacion", width: 40 }] : []),
   ]
   ws.getRow(1).font = { name: "Calibri", size: 11 }
   ws.getRow(1).alignment = { horizontal: "center" }
@@ -398,6 +425,9 @@ export function generarExcelSemanal(
     }
     if (opciones.incluirNombre) {
       rowData.nombre = e.nombre ?? ""
+    }
+    if (opciones.incluirVerificacion) {
+      rowData.verificacion = e.verificacion ?? ""
     }
 
     const row = ws.addRow(rowData)

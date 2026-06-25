@@ -6,6 +6,7 @@ export type Registro = {
   motivo: string | null
   es_vacio: boolean
   nombre?: string
+  verificacion?: string
   codigo?: number | null
   fuente_mapeo?: MapeoFuente | null
   flag_927?: boolean
@@ -18,6 +19,7 @@ export type Entrada = {
   fecha_fin: Date
   flag_927: boolean
   nombre?: string
+  verificacion?: string
 }
 
 export type OpcionesProceso = {
@@ -27,6 +29,7 @@ export type OpcionesProceso = {
   ano: number
   nomencladorPath?: string
   incluirNombre?: boolean
+  incluirVerificacion?: boolean
 }
 
 export type ResultadoProceso = {
