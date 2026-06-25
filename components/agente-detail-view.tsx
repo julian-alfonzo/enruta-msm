@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle, MessageSquareWarning, CheckCheck, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -136,12 +136,9 @@ function AlcoholemiaTab({ agenteId }: { agenteId: number }) {
     })
   }
 
-  if (controles === null) {
-    start(async () => {
-      const data = (await getControlesByAgente(agenteId)) as ControlAlcoholemia[]
-      setControles(data)
-    })
-  }
+  useEffect(() => {
+    cargar()
+  }, [agenteId])
 
   function eliminar(id: number) {
     start(async () => {
@@ -374,12 +371,9 @@ function ObservacionesTab({ agenteId }: { agenteId: number }) {
     })
   }
 
-  if (observaciones === null) {
-    start(async () => {
-      const data = (await getObservacionesByAgente(agenteId)) as ObservacionRow[]
-      setObservaciones(data)
-    })
-  }
+  useEffect(() => {
+    cargar()
+  }, [agenteId])
 
   function toggleResuelto(id: number, actual: boolean) {
     start(async () => {
