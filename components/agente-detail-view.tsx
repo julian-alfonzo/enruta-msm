@@ -49,8 +49,8 @@ function initials(n: string) {
   return n.slice(0, 2).toUpperCase()
 }
 
-export function AgenteDetailView({ agente }: { agente: AgenteInfo }) {
-  const [tab, setTab] = useState<"perfil" | "alcoholemia" | "observaciones">("perfil")
+export function AgenteDetailView({ agente, initialTab = "perfil" }: { agente: AgenteInfo; initialTab?: "perfil" | "alcoholemia" | "observaciones" }) {
+  const [tab, setTab] = useState<"perfil" | "alcoholemia" | "observaciones">(initialTab)
   const router = useRouter()
 
   const tabs = [

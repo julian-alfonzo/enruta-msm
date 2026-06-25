@@ -151,13 +151,13 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
             {agentes.map((a) => (
               <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
                 <Link
-                  href={`/agentes/${a.id}`}
+                  href={`/agentes/${a.id}?tab=alcoholemia`}
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary hover:bg-accent/80"
                 >
                   {initials(a.apellido_nombre)}
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/agentes/${a.id}`} className="font-semibold text-foreground hover:text-primary">
+                  <Link href={`/agentes/${a.id}?tab=alcoholemia`} className="font-semibold text-foreground hover:text-primary">
                     <p className="truncate">{a.apellido_nombre}</p>
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
@@ -374,7 +374,7 @@ function BuscarControlesView({
                   <XCircle className="h-7 w-7 shrink-0 text-destructive" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <Link href={`/agentes/${c.agente_id}`} className="text-sm font-semibold text-foreground hover:text-primary">
+                  <Link href={`/agentes/${c.agente_id}?tab=alcoholemia`} className="text-sm font-semibold text-foreground hover:text-primary">
                     <p className="truncate">{c.apellido_nombre}</p>
                   </Link>
                   <p className="text-xs text-muted-foreground">

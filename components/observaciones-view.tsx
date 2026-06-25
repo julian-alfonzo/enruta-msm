@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Link from "next/link"
 import {
   Search,
   Plus,
@@ -236,9 +237,9 @@ export function ObservacionesView({
                     {obs.resuelto ? "RESUELTA" : "ABIERTA"}
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-semibold text-foreground">
+                <Link href={`/agentes/${obs.agente_id}?tab=observaciones`} className="mt-1 block text-sm font-semibold text-foreground hover:text-primary">
                   {obs.agente_apellido_nombre}
-                </p>
+                </Link>
                 <p className="text-xs text-muted-foreground">
                   Leg: {obs.agente_legajo} · {fmtFecha(obs.created_at)}
                 </p>
