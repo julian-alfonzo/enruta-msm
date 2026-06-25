@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/db"
+import { sql, rawQuery } from "@/lib/db"
 import { requireAuth, jsonOk, jsonError, jsonNoContent, withCors } from "@/lib/auth"
 import { agenteToDTO } from "@/lib/dto"
 
@@ -13,39 +13,42 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get("search") ?? ""
+  const dependencia = searchParams.get("dependencia") ?? ""
+  const cargo = searchParams.get("cargo") ?? ""
+  const turno = searchParams.get("turno") ?? ""
   const page = Math.max(1, Number(searchParams.get("page") ?? 1))
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 20)))
   const offset = (page - 1) * limit
 
   try {
-    let rows: any[]
-    let total: number
+    const conditions = ["deleted_at IS NULL"]
+    const params: any[] = []
 
     if (search) {
       const like = "%" + search + "%"
-      rows = await sql`
-        SELECT * FROM agentes
-        WHERE deleted_at IS NULL
-          AND (apellido_nombre ILIKE ${like} OR legajo ILIKE ${like} OR dependencia ILIKE ${like})
-        ORDER BY apellido_nombre ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `
-      const t = await sql`
-        SELECT COUNT(*)::int AS n FROM agentes
-        WHERE deleted_at IS NULL
-          AND (apellido_nombre ILIKE ${like} OR legajo ILIKE ${like} OR dependencia ILIKE ${like})
-      `
-      total = t[0].n
-    } else {
-      rows = await sql`
-        SELECT * FROM agentes
-        WHERE deleted_at IS NULL
-        ORDER BY apellido_nombre ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `
-      const t = await sql`SELECT COUNT(*)::int AS n FROM agentes WHERE deleted_at IS NULL`
-      total = t[0].n
+      params.push(like, like, like)
+      conditions.push(`(apellido_nombre ILIKE $${params.length - 2} OR legajo ILIKE $${params.length - 1} OR dependencia ILIKE $${params.length})`)
     }
+    if (dependencia) {
+      params.push(`%${dependencia}%`)
+      conditions.push(`dependencia ILIKE $${params.length}`)
+    }
+    if (cargo) {
+      params.push(`%${cargo}%`)
+      conditions.push(`cargo ILIKE $${params.length}`)
+    }
+    if (turno) {
+      params.push(turno)
+      conditions.push(`turno = $${params.length}`)
+    }
+
+    const where = `WHERE ${conditions.join(" AND ")}`
+    const countParams = [...params]
+    const total = (await rawQuery<any>(`SELECT COUNT(*)::int AS n FROM agentes ${where}`, countParams))[0].n
+    const rows = await rawQuery<any>(
+      `SELECT * FROM agentes ${where} ORDER BY apellido_nombre ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    )
 
     return withCors(jsonOk(rows.map(agenteToDTO), { total, page, limit }))
   } catch (e) {

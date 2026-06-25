@@ -64,6 +64,9 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
   const [bSearch, setBSearch] = useState("")
   const [bDesde, setBDesde] = useState("")
   const [bHasta, setBHasta] = useState("")
+  const [bDependencia, setBDependencia] = useState("")
+  const [bCargo, setBCargo] = useState("")
+  const [bTurno, setBTurno] = useState("")
   const [bResultados, setBResultados] = useState<ControlesItem[] | null>(null)
   const [, startB] = useTransition()
 
@@ -80,6 +83,9 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
         bSearch || undefined,
         bDesde || undefined,
         bHasta || undefined,
+        bDependencia || undefined,
+        bCargo || undefined,
+        bTurno || undefined,
       )) as ControlesItem[]
       setBResultados(data)
     })
@@ -261,6 +267,9 @@ function BuscarControlesView({
 }) {
   const [, start] = useTransition()
   const [confirmDeleteAll, setConfirmDeleteAll] = useState<string | null>(null)
+  const [fDependencia, setFDependencia] = useState("")
+  const [fCargo, setFCargo] = useState("")
+  const [fTurno, setFTurno] = useState("")
 
   function eliminar(id: number) {
     start(async () => {
@@ -291,17 +300,15 @@ function BuscarControlesView({
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <div className="flex-1">
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex gap-2">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Agente (nombre o legajo)"
-            className="rounded-xl"
+            className="rounded-xl flex-1"
             onKeyDown={(e) => e.key === "Enter" && onBuscar()}
           />
-        </div>
-        <div className="flex gap-2">
           <Input
             type="date"
             value={desde}
@@ -315,9 +322,32 @@ function BuscarControlesView({
             className="w-40 rounded-xl"
           />
           <Button onClick={onBuscar} className="rounded-xl">
-            <Search className="mr-1 h-4 w-4" />
-            Buscar
+            <Search className="mr-1 h-4 w-4" /> Buscar
           </Button>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={fDependencia}
+            onChange={(e) => setFDependencia(e.target.value)}
+            placeholder="Filtrar por dependencia"
+            className="rounded-xl flex-1 text-xs"
+          />
+          <Input
+            value={fCargo}
+            onChange={(e) => setFCargo(e.target.value)}
+            placeholder="Filtrar por cargo"
+            className="rounded-xl flex-1 text-xs"
+          />
+          <select
+            value={fTurno}
+            onChange={(e) => setFTurno(e.target.value)}
+            className="rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground"
+          >
+            <option value="">Todos los turnos</option>
+            {["ROTATIVO", "MAÑANA", "TARDE", "NOCHE", "FIJO"].map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
       </div>
 

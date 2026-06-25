@@ -1,19 +1,32 @@
 "use server"
 
-import { sql } from "@/lib/db"
+import { sql, rawQuery } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-export async function getAgentes(search = "") {
+export async function getAgentes(search = "", dependencia = "", cargo = "", turno = "") {
+  const conditions = ["deleted_at IS NULL"]
+  const params: any[] = []
+
   if (search) {
     const like = "%" + search + "%"
-    return sql`
-      SELECT * FROM agentes
-      WHERE deleted_at IS NULL
-        AND (apellido_nombre ILIKE ${like} OR legajo ILIKE ${like} OR dependencia ILIKE ${like})
-      ORDER BY apellido_nombre ASC
-    `
+    params.push(like, like, like)
+    conditions.push(`(apellido_nombre ILIKE $${params.length - 2} OR legajo ILIKE $${params.length - 1} OR dependencia ILIKE $${params.length})`)
   }
-  return sql`SELECT * FROM agentes WHERE deleted_at IS NULL ORDER BY apellido_nombre ASC`
+  if (dependencia) {
+    params.push(`%${dependencia}%`)
+    conditions.push(`dependencia ILIKE $${params.length}`)
+  }
+  if (cargo) {
+    params.push(`%${cargo}%`)
+    conditions.push(`cargo ILIKE $${params.length}`)
+  }
+  if (turno) {
+    params.push(turno)
+    conditions.push(`turno = $${params.length}`)
+  }
+
+  const where = `WHERE ${conditions.join(" AND ")}`
+  return rawQuery(`SELECT * FROM agentes ${where} ORDER BY apellido_nombre ASC`, params)
 }
 
 export async function getAgenteById(id: number) {

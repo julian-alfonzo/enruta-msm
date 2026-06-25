@@ -1,13 +1,21 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Pencil, Trash2, ExternalLink } from "lucide-react"
+import { Search, Plus, Pencil, Trash2, ExternalLink, Filter } from "lucide-react"
 import type { Agente } from "@/lib/db"
 import { getAgentes, createAgente, updateAgente, deleteAgente } from "@/app/actions/agentes"
 import Link from "next/link"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -25,15 +33,19 @@ function initials(apellidoNombre: string) {
 export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
   const [agentes, setAgentes] = useState(initialAgentes)
   const [search, setSearch] = useState("")
+  const [fDependencia, setFDependencia] = useState("")
+  const [fCargo, setFCargo] = useState("")
+  const [fTurno, setFTurno] = useState("")
   const [, startTransition] = useTransition()
+  const [showFilters, setShowFilters] = useState(false)
 
   const [crearOpen, setCrearOpen] = useState(false)
   const [editar, setEditar] = useState<Agente | null>(null)
   const [borrar, setBorrar] = useState<Agente | null>(null)
 
-  function refresh(s = search) {
+  function refresh(s = search, d = fDependencia, c = fCargo, t = fTurno) {
     startTransition(async () => {
-      const data = (await getAgentes(s)) as Agente[]
+      const data = (await getAgentes(s, d, c, t)) as Agente[]
       setAgentes(data)
     })
   }
@@ -58,7 +70,42 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
           placeholder="Buscar por apellido y nombre, legajo o dependencia"
           className="rounded-xl pl-10"
         />
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5",
+            showFilters ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent",
+          )}
+        >
+          <Filter className="h-5 w-5" />
+        </button>
       </div>
+
+      {showFilters && (
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          <Input
+            value={fDependencia}
+            onChange={(e) => { setFDependencia(e.target.value); if (!e.target.value) refresh(search, "", fCargo, fTurno) }}
+            onKeyDown={(e) => e.key === "Enter" && refresh()}
+            placeholder="Filtrar por dependencia"
+            className="rounded-xl text-xs"
+          />
+          <Input
+            value={fCargo}
+            onChange={(e) => { setFCargo(e.target.value); if (!e.target.value) refresh(search, fDependencia, "", fTurno) }}
+            onKeyDown={(e) => e.key === "Enter" && refresh()}
+            placeholder="Filtrar por cargo"
+            className="rounded-xl text-xs"
+          />
+          <Select value={fTurno || "all"} onValueChange={(v) => { const tv = (v && v !== "all") ? v : ""; setFTurno(tv); refresh(search, fDependencia, fCargo, tv) }}>
+            <SelectTrigger className="rounded-xl text-xs"><SelectValue placeholder="Turno" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {TURNOS.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <p className="mb-3 text-sm text-muted-foreground">{agentes.length} agente(s) encontrado(s)</p>
 
