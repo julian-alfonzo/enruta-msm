@@ -80,6 +80,11 @@ export async function deleteControlesByFecha(fecha: string) {
   revalidatePath("/alcoholemia")
 }
 
+export async function deleteControlesByRango(desde: string, hasta: string) {
+  await sql`DELETE FROM controles_alcoholemia WHERE fecha >= ${desde} AND fecha <= ${hasta}`
+  revalidatePath("/alcoholemia")
+}
+
 export async function updateControl(
   id: number,
   data: {

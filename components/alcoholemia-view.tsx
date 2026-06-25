@@ -11,7 +11,7 @@ import {
   deleteControl,
   updateControl,
   buscarControles,
-  deleteControlesByFecha,
+  deleteControlesByRango,
 } from "@/app/actions/alcoholemia"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -270,23 +270,24 @@ function BuscarControlesView({
   }
 
   function handleDeleteAll() {
-    if (!desde || !hasta || desde !== hasta) return
+    if (!desde || !hasta) return
     if (confirmDeleteAll === null) {
-      setConfirmDeleteAll(desde)
+      setConfirmDeleteAll(`${desde}_${hasta}`)
       return
     }
-    if (confirmDeleteAll !== desde) {
-      setConfirmDeleteAll(desde)
+    if (confirmDeleteAll !== `${desde}_${hasta}`) {
+      setConfirmDeleteAll(`${desde}_${hasta}`)
       return
     }
     start(async () => {
-      await deleteControlesByFecha(desde)
+      await deleteControlesByRango(desde, hasta)
       setConfirmDeleteAll(null)
       onDelete()
     })
   }
 
-  const puedeBorrarTodo = desde && hasta && desde === hasta && resultados && resultados.length > 0
+  const puedeBorrarTodo = desde && hasta && resultados && resultados.length > 0
+  const rangoEtiqueta = desde && hasta && desde === hasta ? desde : `${desde} a ${hasta}`
 
   return (
     <>
@@ -337,7 +338,7 @@ function BuscarControlesView({
                   className="rounded-xl"
                 >
                   <Trash2 className="mr-1 h-4 w-4" />
-                  Borrar todos del {desde}
+                  Borrar todos ({rangoEtiqueta})
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">

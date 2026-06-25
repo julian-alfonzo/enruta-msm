@@ -138,18 +138,32 @@ export async function DELETE(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const fecha = searchParams.get("fecha")
+  const desde = searchParams.get("desde")
+  const hasta = searchParams.get("hasta")
 
-  if (!fecha) {
-    return withCors(jsonError(400, "VALIDATION_ERROR", "Se requiere el parámetro fecha (YYYY-MM-DD)"))
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-    return withCors(jsonError(400, "VALIDATION_ERROR", "fecha debe tener formato YYYY-MM-DD"))
+  if (fecha) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      return withCors(jsonError(400, "VALIDATION_ERROR", "fecha debe tener formato YYYY-MM-DD"))
+    }
+    try {
+      await sql`DELETE FROM controles_alcoholemia WHERE fecha >= ${fecha} AND fecha < ${fecha}::date + INTERVAL '1 day'`
+      return withCors(jsonNoContent())
+    } catch (e) {
+      return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
+    }
   }
 
-  try {
-    await sql`DELETE FROM controles_alcoholemia WHERE fecha >= ${fecha} AND fecha < ${fecha}::date + INTERVAL '1 day'`
-    return withCors(jsonNoContent())
-  } catch (e) {
-    return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
+  if (desde && hasta) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
+      return withCors(jsonError(400, "VALIDATION_ERROR", "desde y hasta deben tener formato YYYY-MM-DD"))
+    }
+    try {
+      await sql`DELETE FROM controles_alcoholemia WHERE fecha >= ${desde} AND fecha <= ${hasta}`
+      return withCors(jsonNoContent())
+    } catch (e) {
+      return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
+    }
   }
+
+  return withCors(jsonError(400, "VALIDATION_ERROR", "Se requiere fecha o desde+hasta (YYYY-MM-DD)"))
 }
