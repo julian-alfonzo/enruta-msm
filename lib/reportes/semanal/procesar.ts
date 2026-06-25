@@ -391,6 +391,13 @@ export function generarExcelSemanal(
     }
   }
 
+  for (const e of entradasOrdenadas) {
+    if (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1) {
+      const msg = "conflicto 'enfermo' o 'accidente trabajo'"
+      e.verificacion = e.verificacion ? e.verificacion + " | " + msg : msg
+    }
+  }
+
   const workbook = new ExcelJS.Workbook()
   const ws = workbook.addWorksheet("Datos")
   ws.columns = [
@@ -411,14 +418,12 @@ export function generarExcelSemanal(
     const serialInicio = dateToSerial(e.fecha_inicio)
     const serialFin = dateToSerial(e.fecha_fin)
     const isVacio = e.codigo == null
-    const isHighlight =
-      e.flag_927 ||
-      (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1)
+    const isHighlight = e.flag_927
 
     const rowData: Record<string, unknown> = {
       legajo: e.legajo,
       nro_cargo: 1,
-      licencia: isVacio ? "VACIO" : e.codigo,
+      licencia: isVacio ? "Motivo No Reconocido" : e.codigo,
       fecha_inicio: serialInicio,
       fecha_fin: serialFin,
       anio: opciones.ano,

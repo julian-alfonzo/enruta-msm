@@ -152,31 +152,31 @@ export function ReporteSemanalClient() {
             <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3">
               <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-destructive" />
               <div>
-                <p className="font-semibold text-foreground">Rojo · VACIO</p>
+                <p className="font-semibold text-foreground">Rojo · Motivo No Reconocido</p>
                 <p className="text-xs text-muted-foreground">
                   El motivo de inasistencia no se pudo mapear a ningún código de licencia conocido.
                   Se revisa contra el nomenclador, los mapeos manuales y el catálogo de validación.
-                  Si no hay coincidencia exacta ni por subcadena, se marca como VACIO.
+                  Si no hay coincidencia exacta ni por subcadena, se marca como Motivo No Reconocido.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2 rounded-xl bg-yellow-50 p-3">
               <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-yellow-300" />
               <div>
-                <p className="font-semibold text-foreground">Amarillo · Revisar</p>
+                <p className="font-semibold text-foreground">Amarillo · Citado por artículo</p>
                 <p className="text-xs text-muted-foreground">
-                  Se marca cuando:
+                  Se marca cuando el código es <strong>927</strong> (citado por artículo).
                 </p>
-                <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                  <li>El código es <strong>4 (Enfermo)</strong> o <strong>27 (Accidente de trabajo)</strong> y el mismo legajo aparece más de una vez con ese código.</li>
-                  <li>El código es <strong>927</strong> (citado por artículo).</li>
-                </ul>
               </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            <strong>Nota:</strong> Al activar la opción &quot;Incluir verificación de conflictos&quot;, se agrega la columna <strong>Verificacion</strong> que muestra los motivos cuando un mismo legajo en el mismo día tiene distintos códigos de licencia (ej: &quot;Enfermo (4) | Examen (12)&quot;).
+            <strong>Verificación:</strong> La columna <strong>Verificacion</strong> alerta sobre dos situaciones:
           </p>
+          <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+            <li>Cuando el mismo legajo en el mismo día tiene <strong>distintos códigos de licencia</strong> (ej: &quot;Enfermo (4) | Examen (12)&quot;).</li>
+            <li>Cuando un mismo legajo tiene <strong>más de un registro con código 4 (Enfermo) o 27 (Accidente de trabajo)</strong> se muestra &quot;conflicto &apos;enfermo&apos; o &apos;accidente trabajo&apos;&quot;.</li>
+          </ul>
         </div>
       </details>
 
