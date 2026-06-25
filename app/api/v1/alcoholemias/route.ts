@@ -50,54 +50,44 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 50)))
 
   try {
-    let rows: any[]
+    const conditions: string[] = ["a.deleted_at IS NULL"]
+    const params: any[] = []
+    const offset = (page - 1) * limit
 
-    if (search || desde || hasta || fecha) {
-      const conditions: string[] = ["a.deleted_at IS NULL"]
-      const params: any[] = []
-      const offset = (page - 1) * limit
-
-      if (search) {
-        const like = "%" + search + "%"
-        params.push(like, like)
-        conditions.push(`(a.apellido_nombre ILIKE $${params.length - 1} OR a.legajo ILIKE $${params.length})`)
-      }
-      if (fecha) {
-        params.push(fecha)
-        conditions.push(`c.fecha = $${params.length}`)
-      }
-      if (desde) {
-        params.push(desde)
-        conditions.push(`c.fecha >= $${params.length}`)
-      }
-      if (hasta) {
-        params.push(hasta)
-        conditions.push(`c.fecha <= $${params.length}`)
-      }
-
-      const where = `WHERE ${conditions.join(" AND ")}`
-      rows = await rawQuery<any>(
-        `SELECT c.*, a.legajo, a.apellido_nombre
-         FROM controles_alcoholemia c
-         JOIN agentes a ON a.id = c.agente_id
-         ${where}
-         ORDER BY c.fecha DESC, c.id DESC
-         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-        [...params, limit, offset],
-      )
-    } else {
-      rows = await sql`SELECT * FROM controles_alcoholemia ORDER BY fecha DESC, id DESC LIMIT ${limit}`
+    if (search) {
+      const like = "%" + search + "%"
+      params.push(like, like)
+      conditions.push(`(a.apellido_nombre ILIKE $${params.length - 1} OR a.legajo ILIKE $${params.length})`)
+    }
+    if (fecha) {
+      params.push(fecha)
+      conditions.push(`c.fecha = $${params.length}`)
+    }
+    if (desde) {
+      params.push(desde)
+      conditions.push(`c.fecha >= $${params.length}`)
+    }
+    if (hasta) {
+      params.push(hasta)
+      conditions.push(`c.fecha <= $${params.length}`)
     }
 
-    if (search || desde || hasta || fecha) {
-      return withCors(jsonOk(rows.map((r: any) => ({
-        ...controlToDTO(r),
-        legajo: r.legajo,
-        apellidoNombre: r.apellido_nombre,
-      })), { page, limit }))
-    }
+    const where = `WHERE ${conditions.join(" AND ")}`
+    const rows = await rawQuery<any>(
+      `SELECT c.*, a.legajo, a.apellido_nombre
+       FROM controles_alcoholemia c
+       JOIN agentes a ON a.id = c.agente_id
+       ${where}
+       ORDER BY c.fecha DESC, c.id DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    )
 
-    return withCors(jsonOk(rows.map(controlToDTO)))
+    return withCors(jsonOk(rows.map((r: any) => ({
+      ...controlToDTO(r),
+      legajo: r.legajo,
+      apellidoNombre: r.apellido_nombre,
+    })), { page, limit }))
   } catch (e) {
     return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
   }
