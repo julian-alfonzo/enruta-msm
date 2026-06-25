@@ -1,6 +1,6 @@
 "use server"
 
-import { sql } from "@/lib/db"
+import { sql, rawQuery } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
 export async function getControlesByAgente(agenteId: number) {
@@ -73,6 +73,61 @@ export async function createControl(data: {
 export async function deleteControl(id: number) {
   await sql`DELETE FROM controles_alcoholemia WHERE id = ${id}`
   revalidatePath("/alcoholemia")
+}
+
+export async function updateControl(
+  id: number,
+  data: {
+    resultado: "Positivo" | "Negativo"
+    graduacion?: number | null
+    servicio_extra?: string | null
+    observacion?: string | null
+    fecha: string
+  },
+) {
+  const graduacionValue =
+    data.resultado === "Positivo" ? data.graduacion ?? null : null
+
+  await sql`
+    UPDATE controles_alcoholemia SET
+      resultado = ${data.resultado},
+      graduacion = ${graduacionValue},
+      servicio_extra = ${data.servicio_extra ?? null},
+      observacion = ${data.observacion ?? null},
+      fecha = ${data.fecha}
+    WHERE id = ${id}
+  `
+  revalidatePath("/alcoholemia")
+}
+
+export async function buscarControles(search?: string, desde?: string, hasta?: string) {
+  const conditions: string[] = ["a.deleted_at IS NULL"]
+  const params: any[] = []
+
+  if (search) {
+    const like = "%" + search + "%"
+    params.push(like, like)
+    conditions.push(`(a.apellido_nombre ILIKE $${params.length - 1} OR a.legajo ILIKE $${params.length})`)
+  }
+  if (desde) {
+    params.push(desde)
+    conditions.push(`c.fecha >= $${params.length}`)
+  }
+  if (hasta) {
+    params.push(hasta)
+    conditions.push(`c.fecha <= $${params.length}`)
+  }
+
+  const where = `WHERE ${conditions.join(" AND ")}`
+  const query = `
+    SELECT c.*, a.apellido_nombre, a.legajo
+    FROM controles_alcoholemia c
+    JOIN agentes a ON a.id = c.agente_id
+    ${where}
+    ORDER BY c.fecha DESC, c.id DESC
+    LIMIT 200
+  `
+  return rawQuery(query, params)
 }
 
 export async function getControlesParaReporte(desde?: string, hasta?: string) {

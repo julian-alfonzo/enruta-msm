@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft, Pencil } from "lucide-react"
 import type { Agente, ControlAlcoholemia } from "@/lib/db"
 import {
   getAgentesConControl,
   getControlesByAgente,
   createControl,
   deleteControl,
+  updateControl,
+  buscarControles,
 } from "@/app/actions/alcoholemia"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,6 +38,8 @@ type AgenteControl = Agente & { ultimo_control: UltimoControl | null }
 
 type Stats = { total: number; con_control: number; positivos: number; negativos: number }
 
+type ControlesItem = ControlAlcoholemia & { apellido_nombre: string; legajo: string }
+
 function initials(n: string) {
   return n.slice(0, 2).toUpperCase()
 }
@@ -51,12 +55,36 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
   const [, startTransition] = useTransition()
   const [nuevo, setNuevo] = useState<Agente | null>(null)
   const [detalle, setDetalle] = useState<Agente | null>(null)
+  const [editar, setEditar] = useState<ControlesItem | null>(null)
+
+  // Buscar controles state
+  const [tab, setTab] = useState<"agentes" | "buscar">("agentes")
+  const [bSearch, setBSearch] = useState("")
+  const [bDesde, setBDesde] = useState("")
+  const [bHasta, setBHasta] = useState("")
+  const [bResultados, setBResultados] = useState<ControlesItem[] | null>(null)
+  const [, startB] = useTransition()
 
   function refresh(s = search) {
     startTransition(async () => {
       const data = (await getAgentesConControl(s)) as AgenteControl[]
       setAgentes(data)
     })
+  }
+
+  function doBuscar() {
+    startB(async () => {
+      const data = (await buscarControles(
+        bSearch || undefined,
+        bDesde || undefined,
+        bHasta || undefined,
+      )) as ControlesItem[]
+      setBResultados(data)
+    })
+  }
+
+  function onBuscarChanged() {
+    doBuscar()
   }
 
   const cards = [
@@ -70,70 +98,108 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
     <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
       <h2 className="mb-4 text-2xl font-bold text-foreground lg:text-3xl">Control de Alcoholemia</h2>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            refresh(e.target.value)
-          }}
-          placeholder="Buscar por apellido y nombre o legajo"
-          className="rounded-xl pl-10"
-        />
+      <div className="mb-4 flex gap-1 rounded-xl bg-muted p-1">
+        <button
+          onClick={() => setTab("agentes")}
+          className={cn(
+            "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
+            tab === "agentes" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Por Agente
+        </button>
+        <button
+          onClick={() => setTab("buscar")}
+          className={cn(
+            "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
+            tab === "buscar" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Buscar Controles
+        </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-xl bg-card p-3 text-center shadow-sm ring-1 ring-border">
-            <p className={cn("text-2xl font-bold", c.color)}>{c.value}</p>
-            <p className="text-[11px] text-muted-foreground">{c.label}</p>
+      {tab === "agentes" ? (
+        <>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                refresh(e.target.value)
+              }}
+              placeholder="Buscar por apellido y nombre o legajo"
+              className="rounded-xl pl-10"
+            />
           </div>
-        ))}
-      </div>
 
-      <p className="mb-3 text-sm text-muted-foreground">{agentes.length} agente(s) encontrado(s)</p>
+          <div className="mb-4 grid grid-cols-4 gap-2">
+            {cards.map((c) => (
+              <div key={c.label} className="rounded-xl bg-card p-3 text-center shadow-sm ring-1 ring-border">
+                <p className={cn("text-2xl font-bold", c.color)}>{c.value}</p>
+                <p className="text-[11px] text-muted-foreground">{c.label}</p>
+              </div>
+            ))}
+          </div>
 
-      <div className="grid gap-2 lg:grid-cols-2">
-        {agentes.map((a) => (
-          <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
-            <button
-              onClick={() => setDetalle(a)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary"
-            >
-              {initials(a.apellido_nombre)}
-            </button>
-            <button onClick={() => setDetalle(a)} className="min-w-0 flex-1 text-left">
-              <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}
-              </p>
-            </button>
-            <div className="text-right">
-              {a.ultimo_control ? (
-                <span
-                  className={cn(
-                    "text-xs font-bold",
-                    a.ultimo_control.resultado === "Positivo" ? "text-chart-2" : "text-destructive",
-                  )}
+          <p className="mb-3 text-sm text-muted-foreground">{agentes.length} agente(s) encontrado(s)</p>
+
+          <div className="grid gap-2 lg:grid-cols-2">
+            {agentes.map((a) => (
+              <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
+                <button
+                  onClick={() => setDetalle(a)}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary"
                 >
-                  {a.ultimo_control.resultado}
-                  {a.ultimo_control.graduacion != null && ` (${Number(a.ultimo_control.graduacion).toFixed(2)}g/L)`}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">Sin control</span>
-              )}
-            </div>
-            <button
-              onClick={() => setNuevo(a)}
-              aria-label="Nuevo control"
-              className="rounded-lg p-2 text-primary hover:bg-accent"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
+                  {initials(a.apellido_nombre)}
+                </button>
+                <button onClick={() => setDetalle(a)} className="min-w-0 flex-1 text-left">
+                  <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}
+                  </p>
+                </button>
+                <div className="text-right">
+                  {a.ultimo_control ? (
+                    <span
+                      className={cn(
+                        "text-xs font-bold",
+                        a.ultimo_control.resultado === "Positivo" ? "text-chart-2" : "text-destructive",
+                      )}
+                    >
+                      {a.ultimo_control.resultado}
+                      {a.ultimo_control.graduacion != null && ` (${Number(a.ultimo_control.graduacion).toFixed(2)}g/L)`}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sin control</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setNuevo(a)}
+                  aria-label="Nuevo control"
+                  className="rounded-lg p-2 text-primary hover:bg-accent"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      ) : (
+        <BuscarControlesView
+          search={bSearch}
+          setSearch={setBSearch}
+          desde={bDesde}
+          setDesde={setBDesde}
+          hasta={bHasta}
+          setHasta={setBHasta}
+          onBuscar={doBuscar}
+          resultados={bResultados}
+          onDelete={onBuscarChanged}
+          onEdit={(item) => setEditar(item)}
+        />
+      )}
 
       {nuevo && (
         <NuevoControlDialog
@@ -153,11 +219,286 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
           onChanged={() => refresh()}
         />
       )}
+      {editar && (
+        <EditarControlDialog
+          control={editar}
+          onClose={() => setEditar(null)}
+          onDone={onBuscarChanged}
+        />
+      )}
     </div>
   )
 }
 
 const SERVICIOS = ["Cumpliendo servicio", "Hora extra"] as const
+
+function BuscarControlesView({
+  search,
+  setSearch,
+  desde,
+  setDesde,
+  hasta,
+  setHasta,
+  onBuscar,
+  resultados,
+  onDelete,
+  onEdit,
+}: {
+  search: string
+  setSearch: (v: string) => void
+  desde: string
+  setDesde: (v: string) => void
+  hasta: string
+  setHasta: (v: string) => void
+  onBuscar: () => void
+  resultados: ControlesItem[] | null
+  onDelete: () => void
+  onEdit: (item: ControlesItem) => void
+}) {
+  const [, start] = useTransition()
+
+  function eliminar(id: number) {
+    start(async () => {
+      await deleteControl(id)
+      onDelete()
+    })
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="flex-1">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Agente (nombre o legajo)"
+            className="rounded-xl"
+            onKeyDown={(e) => e.key === "Enter" && onBuscar()}
+          />
+        </div>
+        <div className="flex gap-2">
+          <Input
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="w-40 rounded-xl"
+          />
+          <Input
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="w-40 rounded-xl"
+          />
+          <Button onClick={onBuscar} className="rounded-xl">
+            <Search className="mr-1 h-4 w-4" />
+            Buscar
+          </Button>
+        </div>
+      </div>
+
+      {resultados === null ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Usá los filtros y presioná Buscar</p>
+      ) : resultados.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados</p>
+      ) : (
+        <>
+          <p className="mb-3 text-sm text-muted-foreground">{resultados.length} control(es) encontrado(s)</p>
+          <div className="flex flex-col gap-2">
+            {resultados.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-xl bg-card p-3 shadow-sm ring-1 ring-border">
+                {c.resultado === "Positivo" ? (
+                  <CheckCircle2 className="h-7 w-7 shrink-0 text-chart-2" />
+                ) : (
+                  <XCircle className="h-7 w-7 shrink-0 text-destructive" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{c.apellido_nombre}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Leg: {c.legajo} · {typeof c.fecha === "string" ? c.fecha.slice(0, 10) : String(c.fecha)}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span
+                      className={cn(
+                        "text-xs font-bold",
+                        c.resultado === "Positivo" ? "text-chart-2" : "text-destructive",
+                      )}
+                    >
+                      {c.resultado}
+                    </span>
+                    {c.graduacion != null && (
+                      <span className="text-xs">({Number(c.graduacion).toFixed(2)}g/L)</span>
+                    )}
+                    {c.servicio_extra && <span className="text-xs text-primary">{c.servicio_extra}</span>}
+                    {c.observacion && (
+                      <span className="truncate text-xs text-muted-foreground">{c.observacion}</span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onEdit(c)}
+                  aria-label="Editar control"
+                  className="rounded-lg p-2 text-primary hover:bg-accent"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => eliminar(c.id)}
+                  aria-label="Eliminar control"
+                  className="rounded-lg p-2 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+function EditarControlDialog({
+  control,
+  onClose,
+  onDone,
+}: {
+  control: ControlesItem
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [resultado, setResultado] = useState<"Positivo" | "Negativo">(control.resultado)
+  const [servicioExtra, setServicioExtra] = useState<string>(control.servicio_extra ?? "Cumpliendo servicio")
+  const [graduacion, setGraduacion] = useState(control.graduacion != null ? String(control.graduacion) : "")
+  const [observacion, setObservacion] = useState(control.observacion ?? "")
+  const [fecha, setFecha] = useState(
+    typeof control.fecha === "string" ? control.fecha.slice(0, 10) : new Date(control.fecha).toISOString().slice(0, 10),
+  )
+
+  function submit() {
+    setError(null)
+    if (resultado === "Positivo") {
+      const g = Number(graduacion)
+      if (!graduacion || isNaN(g) || g < 0.01 || g > 9.99) {
+        setError("La graduación debe estar entre 0.01 y 9.99")
+        return
+      }
+    }
+    start(async () => {
+      try {
+        await updateControl(control.id, {
+          resultado,
+          graduacion: resultado === "Positivo" ? Number(graduacion) : null,
+          servicio_extra: servicioExtra || null,
+          observacion: observacion || null,
+          fecha: new Date(fecha).toISOString(),
+        })
+        onDone()
+        onClose()
+      } catch (e) {
+        setError(String((e as Error).message ?? e))
+      }
+    })
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar Control</DialogTitle>
+        </DialogHeader>
+
+        <div className="rounded-xl bg-accent p-3">
+          <p className="font-bold text-foreground">{control.apellido_nombre}</p>
+          <p className="text-xs text-muted-foreground">Legajo: {control.legajo}</p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div>
+            <Label className="mb-1.5 block text-sm font-semibold">Fecha del control</Label>
+            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="rounded-xl" />
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-sm font-semibold">Resultado</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setResultado("Positivo")}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+                  resultado === "Positivo" ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
+                )}
+              >
+                <CheckCircle2 className="h-4 w-4" /> Positivo
+              </button>
+              <button
+                onClick={() => setResultado("Negativo")}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+                  resultado === "Negativo" ? "bg-destructive text-white" : "bg-muted text-muted-foreground",
+                )}
+              >
+                <XCircle className="h-4 w-4" /> Negativo
+              </button>
+            </div>
+          </div>
+
+          {resultado === "Positivo" && (
+            <div>
+              <Label className="mb-1.5 block text-sm font-semibold">Graduación (g/L)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="9.99"
+                value={graduacion}
+                onChange={(e) => setGraduacion(e.target.value)}
+                placeholder="0.24"
+                className="rounded-xl"
+              />
+            </div>
+          )}
+
+          <div>
+            <Label className="mb-1.5 block text-sm font-semibold">Servicio</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {SERVICIOS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setServicioExtra(s)}
+                  className={cn(
+                    "rounded-xl py-3 text-sm font-semibold transition-colors",
+                    servicioExtra === s ? "bg-chart-2 text-white" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Textarea
+            value={observacion}
+            onChange={(e) => setObservacion(e.target.value)}
+            placeholder="Observación (opcional)"
+            className="rounded-xl"
+          />
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={pending}>
+            {pending ? "Guardando..." : "Guardar Cambios"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function NuevoControlDialog({
   agente,

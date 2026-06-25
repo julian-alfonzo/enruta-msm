@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Home, LogOut, Menu } from "lucide-react"
+import { Home, LogOut, Menu, Users, FlaskConical, MessageSquare, BarChart3 } from "lucide-react"
 import { useSession } from "@/components/session-provider"
 import { cn } from "@/lib/utils"
 import {
@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
+  { href: "/agentes", label: "Agentes", icon: Users },
+  { href: "/alcoholemia", label: "Alcoholemia", icon: FlaskConical },
+  { href: "/observaciones", label: "Observaciones", icon: MessageSquare },
+  { href: "/reportes", label: "Reportes", icon: BarChart3 },
 ]
 
 const titles: Record<string, string> = {
@@ -57,18 +61,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-background lg:flex">
       {/* Sidebar (web) */}
       <aside className="hidden w-20 flex-col items-center bg-sidebar py-6 text-sidebar-foreground lg:flex">
-        <Link
-          href="/"
-          title="Inicio"
-          className={cn(
-            "mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
-            pathname === "/"
-              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-              : "text-sidebar-foreground hover:bg-sidebar-accent",
-          )}
-        >
-          <Home className="h-6 w-6" />
-        </Link>
+        {navItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={item.label}
+              className={cn(
+                "mb-2 flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+                pathname === item.href
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent",
+              )}
+            >
+              <Icon className="h-6 w-6" />
+            </Link>
+          )
+        })}
         <div className="flex flex-1" />
         <button
           onClick={handleLogout}
