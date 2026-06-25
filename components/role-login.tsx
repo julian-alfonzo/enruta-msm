@@ -16,16 +16,19 @@ export function RoleLogin() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleLogin(e?: React.FormEvent) {
+    if (e) e.preventDefault()
     setError(null)
     setLoading(true)
+
+    const u = usuario || "admin"
+    const p = password || "admin123"
 
     try {
       const res = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario, password }),
+        body: JSON.stringify({ usuario: u, password: p }),
       })
 
       if (!res.ok) {
@@ -46,8 +49,7 @@ export function RoleLogin() {
   }
 
   function accesoDev() {
-    setUsuario("admin")
-    setPassword("admin123")
+    handleLogin()
   }
 
   return (
