@@ -40,7 +40,7 @@ type AgenteControl = Agente & { ultimo_control: UltimoControl | null }
 
 type Stats = { total: number; con_control: number; positivos: number; negativos: number }
 
-type ControlesItem = ControlAlcoholemia & { apellido_nombre: string; legajo: string }
+type ControlesItem = ControlAlcoholemia & { apellido_nombre: string; legajo: string; dependencia?: string | null; cargo?: string | null }
 
 function initials(n: string) {
   return n.slice(0, 2).toUpperCase()
@@ -165,7 +165,7 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
                     <p className="truncate">{a.apellido_nombre}</p>
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
-                    Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}
+                    Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}{a.cargo ? ` · ${a.cargo}` : ""}
                   </p>
                 </div>
                 <div className="text-right">
@@ -478,9 +478,14 @@ function BuscarControlesView({
                   <Link href={`/agentes/${c.agente_id}?tab=alcoholemia`} className="text-sm font-semibold text-foreground hover:text-primary">
                     <p className="truncate">{c.apellido_nombre}</p>
                   </Link>
-                  <p className="text-xs text-muted-foreground">
+                   <p className="text-xs text-muted-foreground">
                     Leg: {c.legajo} · {typeof c.fecha === "string" ? c.fecha.slice(0, 10) : String(c.fecha)}
                   </p>
+                  {(c.dependencia || c.cargo) && (
+                    <p className="text-xs text-primary">
+                      {[c.dependencia, c.cargo].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span
                       className={cn(

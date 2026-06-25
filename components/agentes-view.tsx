@@ -105,7 +105,7 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
                 {a.apellido_nombre}
               </Link>
               <p className="text-xs text-muted-foreground">Legajo: {a.legajo}</p>
-              <p className="text-xs text-primary">{a.dependencia ?? "—"}</p>
+              <p className="text-xs text-primary">{a.dependencia ?? "—"}{a.cargo ? ` · ${a.cargo}` : ""}</p>
               {a.turno && <p className="text-xs text-muted-foreground">{a.turno}</p>}
             </div>
             <div className="flex items-center gap-1">
