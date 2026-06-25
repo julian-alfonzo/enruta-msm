@@ -40,11 +40,12 @@ function makeRequest(method: string, url: string, body?: any) {
   const headers = new Headers()
   headers.set("authorization", "Bearer test-token")
   headers.set("content-type", "application/json")
-  return new Request(url, {
+  const init: RequestInit = {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-  })
+  }
+  return new Request(url, init) as any
 }
 
 async function parseJson(res: Response) {

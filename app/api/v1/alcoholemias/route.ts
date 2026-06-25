@@ -45,16 +45,40 @@ export async function GET(req: NextRequest) {
   const fecha = searchParams.get("fecha")
   const desde = searchParams.get("desde")
   const hasta = searchParams.get("hasta")
+  const search = searchParams.get("search")
+  const page = Math.max(1, Number(searchParams.get("page") ?? 1))
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 50)))
 
   try {
     let rows: any[]
-    if (fecha) {
-      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha = ${fecha} ORDER BY fecha DESC, id DESC`
+
+    if (search) {
+      const like = "%" + search + "%"
+      const offset = (page - 1) * limit
+      rows = await sql`
+        SELECT c.*, a.legajo as agente_legajo, a.apellido_nombre as agente_nombre
+        FROM controles_alcoholemia c
+        JOIN agentes a ON c.agente_id = a.id AND a.deleted_at IS NULL
+        WHERE a.apellido_nombre ILIKE ${like} OR a.legajo ILIKE ${like}
+        ORDER BY c.fecha DESC, c.id DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+    } else if (fecha) {
+      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha = ${fecha} ORDER BY fecha DESC, id DESC LIMIT ${limit}`
     } else if (desde && hasta) {
-      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha BETWEEN ${desde} AND ${hasta} ORDER BY fecha DESC, id DESC`
+      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha BETWEEN ${desde} AND ${hasta} ORDER BY fecha DESC, id DESC LIMIT ${limit}`
     } else {
-      rows = await sql`SELECT * FROM controles_alcoholemia ORDER BY fecha DESC, id DESC LIMIT 500`
+      rows = await sql`SELECT * FROM controles_alcoholemia ORDER BY fecha DESC, id DESC LIMIT ${limit}`
     }
+
+    if (search) {
+      return withCors(jsonOk(rows.map((r: any) => ({
+        ...controlToDTO(r),
+        legajo: r.agente_legajo,
+        apellidoNombre: r.agente_nombre,
+      })), { page, limit }))
+    }
+
     return withCors(jsonOk(rows.map(controlToDTO)))
   } catch (e) {
     return withCors(jsonError(500, "INTERNAL_ERROR", String(e)))
