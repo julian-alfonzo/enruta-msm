@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft, Pencil, ExternalLink } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft, Pencil, ExternalLink, FileSpreadsheet, FileText } from "lucide-react"
 import type { Agente, ControlAlcoholemia } from "@/lib/db"
 import Link from "next/link"
 import {
@@ -270,6 +270,78 @@ function BuscarControlesView({
   const [fDependencia, setFDependencia] = useState("")
   const [fCargo, setFCargo] = useState("")
   const [fTurno, setFTurno] = useState("")
+  const [working, setWorking] = useState<string | null>(null)
+
+  function fmtDate(iso: string) {
+    if (!iso) return ""
+    const d = new Date(iso)
+    return d.toLocaleDateString("es-AR")
+  }
+
+  function exportarPdf() {
+    setWorking("pdf")
+    start(async () => {
+      const [jsPDFModule, autoTableModule] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ])
+      const jsPDF = jsPDFModule.default
+      const autoTable = autoTableModule.default
+      const doc = new jsPDF({ orientation: "landscape" })
+
+      doc.setFillColor(36, 36, 36)
+      doc.rect(0, 0, 297, 18, "F")
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(14)
+      doc.text("Control de Alcoholemia", 14, 12)
+      doc.setTextColor(20, 20, 20)
+      doc.setFontSize(9)
+      const filtros = [
+        desde && `Desde: ${desde}`, hasta && `Hasta: ${hasta}`,
+        search && `Agente: ${search}`, fDependencia && `Dep: ${fDependencia}`,
+        fCargo && `Cargo: ${fCargo}`, fTurno && `Turno: ${fTurno}`,
+      ].filter(Boolean).join(" · ")
+      doc.text(`Total: ${resultados?.length ?? 0} controles${filtros ? ` · ${filtros}` : ""}`, 14, 22)
+
+      autoTable(doc, {
+        startY: 28,
+        head: [["Agente", "Legajo", "Dep.", "Cargo", "Turno", "Resultado", "Graduación", "Servicio", "Fecha"]],
+        body: (resultados ?? []).map((c: any) => [
+          c.apellido_nombre, c.legajo,
+          c.dependencia ?? "-", c.cargo ?? "-", c.turno ?? "-",
+          c.resultado,
+          c.graduacion != null ? `${Number(c.graduacion).toFixed(2)} g/L` : "-",
+          c.servicio_extra ?? "-", fmtDate(c.fecha),
+        ]),
+        headStyles: { fillColor: [79, 195, 247], fontSize: 7 },
+        styles: { fontSize: 6 },
+        margin: { left: 5, right: 5 },
+      })
+      doc.save(`alcoholemia-${desde || "reporte"}.pdf`)
+      setWorking(null)
+    })
+  }
+
+  function exportarExcel() {
+    setWorking("excel")
+    start(async () => {
+      const XLSX = await import("xlsx")
+      const rows = (resultados ?? []).map((c: any) => ({
+        Agente: c.apellido_nombre, Legajo: c.legajo,
+        Dependencia: c.dependencia ?? "", Cargo: c.cargo ?? "", Turno: c.turno ?? "",
+        Resultado: c.resultado,
+        "Graduación (g/L)": c.graduacion != null ? Number(c.graduacion) : "",
+        Servicio: c.servicio_extra ?? "",
+        Fecha: fmtDate(c.fecha),
+        Observación: c.observacion ?? "",
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Alcoholemia")
+      XLSX.writeFile(wb, `alcoholemia-${desde || "reporte"}.xlsx`)
+      setWorking(null)
+    })
+  }
 
   function eliminar(id: number) {
     start(async () => {
@@ -358,7 +430,19 @@ function BuscarControlesView({
       ) : (
         <>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{resultados.length} control(es) encontrado(s)</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">{resultados.length} control(es) encontrado(s)</p>
+              {resultados.length > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={exportarPdf} disabled={!!working} className="h-7 rounded-lg text-xs">
+                    <FileText className="mr-1 h-3 w-3 text-red-500" /> PDF
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={exportarExcel} disabled={!!working} className="h-7 rounded-lg text-xs">
+                    <FileSpreadsheet className="mr-1 h-3 w-3 text-green-600" /> Excel
+                  </Button>
+                </>
+              )}
+            </div>
             {puedeBorrarTodo && (
               confirmDeleteAll === null ? (
                 <Button
