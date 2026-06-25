@@ -75,6 +75,11 @@ export async function deleteControl(id: number) {
   revalidatePath("/alcoholemia")
 }
 
+export async function deleteControlesByFecha(fecha: string) {
+  await sql`DELETE FROM controles_alcoholemia WHERE fecha >= ${fecha} AND fecha < ${fecha}::date + INTERVAL '1 day'`
+  revalidatePath("/alcoholemia")
+}
+
 export async function updateControl(
   id: number,
   data: {

@@ -11,6 +11,7 @@ import {
   deleteControl,
   updateControl,
   buscarControles,
+  deleteControlesByFecha,
 } from "@/app/actions/alcoholemia"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -259,6 +260,7 @@ function BuscarControlesView({
   onEdit: (item: ControlesItem) => void
 }) {
   const [, start] = useTransition()
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState<string | null>(null)
 
   function eliminar(id: number) {
     start(async () => {
@@ -266,6 +268,25 @@ function BuscarControlesView({
       onDelete()
     })
   }
+
+  function handleDeleteAll() {
+    if (!desde || !hasta || desde !== hasta) return
+    if (confirmDeleteAll === null) {
+      setConfirmDeleteAll(desde)
+      return
+    }
+    if (confirmDeleteAll !== desde) {
+      setConfirmDeleteAll(desde)
+      return
+    }
+    start(async () => {
+      await deleteControlesByFecha(desde)
+      setConfirmDeleteAll(null)
+      onDelete()
+    })
+  }
+
+  const puedeBorrarTodo = desde && hasta && desde === hasta && resultados && resultados.length > 0
 
   return (
     <>
@@ -305,7 +326,44 @@ function BuscarControlesView({
         <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados</p>
       ) : (
         <>
-          <p className="mb-3 text-sm text-muted-foreground">{resultados.length} control(es) encontrado(s)</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{resultados.length} control(es) encontrado(s)</p>
+            {puedeBorrarTodo && (
+              confirmDeleteAll === null ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteAll}
+                  className="rounded-xl"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Borrar todos del {desde}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-destructive">
+                    ¿Seguro? Se borrarán {resultados.length} controles
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteAll}
+                    className="rounded-xl"
+                  >
+                    Sí, borrar todo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmDeleteAll(null)}
+                    className="rounded-xl"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
           <div className="flex flex-col gap-2">
             {resultados.map((c) => (
               <div key={c.id} className="flex items-center gap-3 rounded-xl bg-card p-3 shadow-sm ring-1 ring-border">
