@@ -56,10 +56,13 @@ export function ReportesView() {
         const data = (await fetchReporteControles(desde || undefined, hasta || undefined)) as any[]
         autoTable(doc, {
           startY: 42,
-          head: [["Agente", "Legajo", "Resultado", "Graduación", "Servicio", "Fecha"]],
+          head: [["Agente", "Legajo", "Dependencia", "Cargo", "Turno", "Resultado", "Graduación", "Servicio", "Fecha"]],
           body: data.map((c) => [
             c.apellido_nombre,
             c.legajo,
+            c.dependencia ?? "-",
+            c.cargo ?? "-",
+            c.turno ?? "-",
             c.resultado,
             c.graduacion != null ? `${Number(c.graduacion).toFixed(2)} g/L` : "-",
             c.servicio_extra ?? "-",
@@ -104,6 +107,8 @@ export function ReportesView() {
           Agente: c.apellido_nombre,
           Legajo: c.legajo,
           Dependencia: c.dependencia ?? "",
+          Cargo: c.cargo ?? "",
+          Turno: c.turno ?? "",
           Resultado: c.resultado,
           "Graduación (g/L)": c.graduacion != null ? Number(c.graduacion) : "",
           "Servicio": c.servicio_extra ?? "",

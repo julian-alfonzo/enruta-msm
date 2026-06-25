@@ -143,7 +143,7 @@ export async function buscarControles(search?: string, desde?: string, hasta?: s
 export async function getControlesParaReporte(desde?: string, hasta?: string) {
   if (desde && hasta) {
     return sql`
-      SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia
+      SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia, a.cargo, a.turno
       FROM controles_alcoholemia c
       JOIN agentes a ON a.id = c.agente_id
       WHERE a.deleted_at IS NULL
@@ -152,7 +152,7 @@ export async function getControlesParaReporte(desde?: string, hasta?: string) {
     `
   }
   return sql`
-    SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia
+    SELECT c.*, a.apellido_nombre, a.legajo, a.dependencia, a.cargo, a.turno
     FROM controles_alcoholemia c
     JOIN agentes a ON a.id = c.agente_id
     WHERE a.deleted_at IS NULL
