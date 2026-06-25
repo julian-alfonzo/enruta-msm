@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Pencil, Trash2 } from "lucide-react"
+import { Search, Plus, Pencil, Trash2, ExternalLink } from "lucide-react"
 import type { Agente } from "@/lib/db"
 import { getAgentes, createAgente, updateAgente, deleteAgente } from "@/app/actions/agentes"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -64,16 +65,25 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
       <div className="grid gap-2 lg:grid-cols-2">
         {agentes.map((a) => (
           <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">
+            <Link href={`/agentes/${a.id}`} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary hover:bg-accent/80">
               {initials(a.apellido_nombre)}
-            </div>
+            </Link>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
+              <Link href={`/agentes/${a.id}`} className="font-semibold text-foreground hover:text-primary">
+                {a.apellido_nombre}
+              </Link>
               <p className="text-xs text-muted-foreground">Legajo: {a.legajo}</p>
               <p className="text-xs text-primary">{a.dependencia ?? "—"}</p>
               {a.turno && <p className="text-xs text-muted-foreground">{a.turno}</p>}
             </div>
             <div className="flex items-center gap-1">
+              <Link
+                href={`/agentes/${a.id}`}
+                title="Ver detalle"
+                className="rounded-lg p-2 text-muted-foreground hover:bg-accent"
+              >
+                <ExternalLink className="h-5 w-5" />
+              </Link>
               <button
                 onClick={() => setEditar(a)}
                 aria-label="Editar agente"

@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft, Pencil } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, ArrowLeft, Pencil, ExternalLink } from "lucide-react"
 import type { Agente, ControlAlcoholemia } from "@/lib/db"
+import Link from "next/link"
 import {
   getAgentesConControl,
   getControlesByAgente,
@@ -148,18 +149,20 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
           <div className="grid gap-2 lg:grid-cols-2">
             {agentes.map((a) => (
               <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border">
-                <button
-                  onClick={() => setDetalle(a)}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary"
+                <Link
+                  href={`/agentes/${a.id}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary hover:bg-accent/80"
                 >
                   {initials(a.apellido_nombre)}
-                </button>
-                <button onClick={() => setDetalle(a)} className="min-w-0 flex-1 text-left">
-                  <p className="truncate font-semibold text-foreground">{a.apellido_nombre}</p>
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/agentes/${a.id}`} className="font-semibold text-foreground hover:text-primary">
+                    <p className="truncate">{a.apellido_nombre}</p>
+                  </Link>
                   <p className="truncate text-xs text-muted-foreground">
                     Leg: {a.legajo} · {a.dependencia?.slice(0, 18)}
                   </p>
-                </button>
+                </div>
                 <div className="text-right">
                   {a.ultimo_control ? (
                     <span
@@ -312,7 +315,9 @@ function BuscarControlesView({
                   <XCircle className="h-7 w-7 shrink-0 text-destructive" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{c.apellido_nombre}</p>
+                  <Link href={`/agentes/${c.agente_id}`} className="text-sm font-semibold text-foreground hover:text-primary">
+                    <p className="truncate">{c.apellido_nombre}</p>
+                  </Link>
                   <p className="text-xs text-muted-foreground">
                     Leg: {c.legajo} · {typeof c.fecha === "string" ? c.fecha.slice(0, 10) : String(c.fecha)}
                   </p>
