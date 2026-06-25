@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
-import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, ChevronDown, Loader2, ListTree } from "lucide-react"
+import { Upload, Download, FileSpreadsheet, AlertCircle, ChevronLeft, ChevronDown, Loader2, ListTree, Palette } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -134,34 +134,51 @@ export function ReporteSemanalClient() {
         </p>
       </div>
 
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Código de colores del Excel de salida</CardTitle>
-          <CardDescription>
+      <details className="mb-4 group rounded-2xl border-2 border-border bg-card shadow-sm">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 p-4 select-none">
+          <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-foreground">
+              Código de colores del Excel de salida
+            </span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-border p-4">
+          <p className="mb-3 text-xs text-muted-foreground">
             Las celdas de la columna <strong>Licencia</strong> se pintan según el estado del registro.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-destructive" />
-            <div>
-              <p className="font-semibold text-foreground">Rojo · VACIO</p>
-              <p className="text-xs text-muted-foreground">
-                Motivo no reconocido o excluido (no se pudo mapear a un código de licencia).
-              </p>
+          </p>
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3">
+              <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-destructive" />
+              <div>
+                <p className="font-semibold text-foreground">Rojo · VACIO</p>
+                <p className="text-xs text-muted-foreground">
+                  El motivo de inasistencia no se pudo mapear a ningún código de licencia conocido.
+                  Se revisa contra el nomenclador, los mapeos manuales y el catálogo de validación.
+                  Si no hay coincidencia exacta ni por subcadena, se marca como VACIO.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-xl bg-yellow-50 p-3">
+              <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-yellow-300" />
+              <div>
+                <p className="font-semibold text-foreground">Amarillo · Revisar</p>
+                <p className="text-xs text-muted-foreground">
+                  Se marca cuando:
+                </p>
+                <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+                  <li>El código es <strong>4 (Enfermo)</strong> o <strong>27 (Accidente de trabajo)</strong> y el mismo legajo aparece más de una vez con ese código.</li>
+                  <li>El código es <strong>927</strong> (citado por artículo).</li>
+                </ul>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded border border-border bg-yellow-300" />
-            <div>
-              <p className="font-semibold text-foreground">Amarillo · Revisar</p>
-              <p className="text-xs text-muted-foreground">
-                Código 4 o 27 con más de un registro del mismo legajo, o código 927 (citado por art).
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="mt-3 text-xs text-muted-foreground">
+            <strong>Nota:</strong> Al activar la opción &quot;Incluir verificación de conflictos&quot;, se agrega la columna <strong>Verificacion</strong> que muestra los motivos cuando un mismo legajo en el mismo día tiene distintos códigos de licencia (ej: &quot;Enfermo (4) | Examen (12)&quot;).
+          </p>
+        </div>
+      </details>
 
       <details className="mb-4 group rounded-2xl border-2 border-border bg-card shadow-sm">
         <summary className="flex cursor-pointer items-center justify-between gap-3 p-4 select-none">
