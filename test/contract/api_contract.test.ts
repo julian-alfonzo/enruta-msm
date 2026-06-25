@@ -129,12 +129,12 @@ describe("Agentes API Contract (Backend ↔ Flutter)", () => {
       expect(agente).not.toHaveProperty("fecha_ingreso")
     })
 
-    it("acepta filtros dependencia, cargo y turno", async () => {
+    it("acepta filtros dependencia, cargo", async () => {
       mockRawQuery.mockResolvedValueOnce([{ n: 5 }]) // COUNT
       mockRawQuery.mockResolvedValueOnce([DB_AGENTE_ROW]) // SELECT
 
       const { GET } = await import("@/app/api/v1/agentes/route")
-      const req = makeRequest("GET", "http://localhost/api/v1/agentes?dependencia=Transito&cargo=Supervisor&turno=ROTATIVO")
+      const req = makeRequest("GET", "http://localhost/api/v1/agentes?dependencia=Transito&cargo=Supervisor")
       const res = await GET(req)
       const body = await parseJson(res)
 

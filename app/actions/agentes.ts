@@ -3,7 +3,7 @@
 import { sql, rawQuery } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 
-export async function getAgentes(search = "", dependencia = "", cargo = "", turno = "") {
+export async function getAgentes(search = "", dependencia = "", cargo = "") {
   const conditions = ["deleted_at IS NULL"]
   const params: any[] = []
 
@@ -19,10 +19,6 @@ export async function getAgentes(search = "", dependencia = "", cargo = "", turn
   if (cargo) {
     params.push(`%${cargo}%`)
     conditions.push(`cargo ILIKE $${params.length}`)
-  }
-  if (turno) {
-    params.push(turno)
-    conditions.push(`turno = $${params.length}`)
   }
 
   const where = `WHERE ${conditions.join(" AND ")}`

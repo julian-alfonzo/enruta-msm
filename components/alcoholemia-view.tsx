@@ -66,7 +66,6 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
   const [bHasta, setBHasta] = useState("")
   const [bDependencia, setBDependencia] = useState("")
   const [bCargo, setBCargo] = useState("")
-  const [bTurno, setBTurno] = useState("")
   const [bResultados, setBResultados] = useState<ControlesItem[] | null>(null)
   const [, startB] = useTransition()
 
@@ -85,7 +84,6 @@ export function AlcoholemiaView({ initialAgentes, stats }: { initialAgentes: Age
         bHasta || undefined,
         bDependencia || undefined,
         bCargo || undefined,
-        bTurno || undefined,
       )) as ControlesItem[]
       setBResultados(data)
     })
@@ -269,7 +267,6 @@ function BuscarControlesView({
   const [confirmDeleteAll, setConfirmDeleteAll] = useState<string | null>(null)
   const [fDependencia, setFDependencia] = useState("")
   const [fCargo, setFCargo] = useState("")
-  const [fTurno, setFTurno] = useState("")
   const [working, setWorking] = useState<string | null>(null)
 
   function fmtDate(iso: string) {
@@ -299,16 +296,16 @@ function BuscarControlesView({
       const filtros = [
         desde && `Desde: ${desde}`, hasta && `Hasta: ${hasta}`,
         search && `Agente: ${search}`, fDependencia && `Dep: ${fDependencia}`,
-        fCargo && `Cargo: ${fCargo}`, fTurno && `Turno: ${fTurno}`,
+        fCargo && `Cargo: ${fCargo}`,
       ].filter(Boolean).join(" · ")
       doc.text(`Total: ${resultados?.length ?? 0} controles${filtros ? ` · ${filtros}` : ""}`, 14, 22)
 
       autoTable(doc, {
         startY: 28,
-        head: [["Agente", "Legajo", "Dep.", "Cargo", "Turno", "Resultado", "Graduación", "Servicio", "Fecha"]],
+        head: [["Agente", "Legajo", "Dep.", "Cargo", "Resultado", "Graduación", "Servicio", "Fecha"]],
         body: (resultados ?? []).map((c: any) => [
           c.apellido_nombre, c.legajo,
-          c.dependencia ?? "-", c.cargo ?? "-", c.turno ?? "-",
+          c.dependencia ?? "-", c.cargo ?? "-",
           c.resultado,
           c.graduacion != null ? `${Number(c.graduacion).toFixed(2)} g/L` : "-",
           c.servicio_extra ?? "-", fmtDate(c.fecha),
@@ -328,7 +325,7 @@ function BuscarControlesView({
       const XLSX = await import("xlsx")
       const rows = (resultados ?? []).map((c: any) => ({
         Agente: c.apellido_nombre, Legajo: c.legajo,
-        Dependencia: c.dependencia ?? "", Cargo: c.cargo ?? "", Turno: c.turno ?? "",
+        Dependencia: c.dependencia ?? "", Cargo: c.cargo ?? "",
         Resultado: c.resultado,
         "Graduación (g/L)": c.graduacion != null ? Number(c.graduacion) : "",
         Servicio: c.servicio_extra ?? "",
@@ -410,16 +407,6 @@ function BuscarControlesView({
             placeholder="Filtrar por cargo"
             className="rounded-xl flex-1 text-xs"
           />
-          <select
-            value={fTurno}
-            onChange={(e) => setFTurno(e.target.value)}
-            className="rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground"
-          >
-            <option value="">Todos los turnos</option>
-            {["ROTATIVO", "MAÑANA", "TARDE", "NOCHE", "FIJO"].map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
         </div>
       </div>
 

@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search")
   const dependencia = searchParams.get("dependencia")
   const cargo = searchParams.get("cargo")
-  const turno = searchParams.get("turno")
   const page = Math.max(1, Number(searchParams.get("page") ?? 1))
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 50)))
 
@@ -72,10 +71,6 @@ export async function GET(req: NextRequest) {
     if (cargo) {
       params.push(`%${cargo}%`)
       conditions.push(`a.cargo ILIKE $${params.length}`)
-    }
-    if (turno) {
-      params.push(turno)
-      conditions.push(`a.turno = $${params.length}`)
     }
     if (fecha) {
         params.push(fecha)

@@ -5,13 +5,6 @@ import { Search, Plus, Pencil, Trash2, ExternalLink, Filter } from "lucide-react
 import type { Agente } from "@/lib/db"
 import { getAgentes, createAgente, updateAgente, deleteAgente } from "@/app/actions/agentes"
 import Link from "next/link"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -35,7 +28,6 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
   const [search, setSearch] = useState("")
   const [fDependencia, setFDependencia] = useState("")
   const [fCargo, setFCargo] = useState("")
-  const [fTurno, setFTurno] = useState("")
   const [, startTransition] = useTransition()
   const [showFilters, setShowFilters] = useState(false)
 
@@ -43,9 +35,9 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
   const [editar, setEditar] = useState<Agente | null>(null)
   const [borrar, setBorrar] = useState<Agente | null>(null)
 
-  function refresh(s = search, d = fDependencia, c = fCargo, t = fTurno) {
+  function refresh(s = search, d = fDependencia, c = fCargo) {
     startTransition(async () => {
-      const data = (await getAgentes(s, d, c, t)) as Agente[]
+      const data = (await getAgentes(s, d, c)) as Agente[]
       setAgentes(data)
     })
   }
@@ -82,28 +74,21 @@ export function AgentesView({ initialAgentes }: { initialAgentes: Agente[] }) {
       </div>
 
       {showFilters && (
-        <div className="mb-3 grid grid-cols-3 gap-2">
+        <div className="mb-3 grid grid-cols-2 gap-2">
           <Input
             value={fDependencia}
-            onChange={(e) => { setFDependencia(e.target.value); if (!e.target.value) refresh(search, "", fCargo, fTurno) }}
+            onChange={(e) => { setFDependencia(e.target.value); if (!e.target.value) refresh(search, "", fCargo) }}
             onKeyDown={(e) => e.key === "Enter" && refresh()}
             placeholder="Filtrar por dependencia"
             className="rounded-xl text-xs"
           />
           <Input
             value={fCargo}
-            onChange={(e) => { setFCargo(e.target.value); if (!e.target.value) refresh(search, fDependencia, "", fTurno) }}
+            onChange={(e) => { setFCargo(e.target.value); if (!e.target.value) refresh(search, fDependencia, "") }}
             onKeyDown={(e) => e.key === "Enter" && refresh()}
             placeholder="Filtrar por cargo"
             className="rounded-xl text-xs"
           />
-          <Select value={fTurno || "all"} onValueChange={(v) => { const tv = (v && v !== "all") ? v : ""; setFTurno(tv); refresh(search, fDependencia, fCargo, tv) }}>
-            <SelectTrigger className="rounded-xl text-xs"><SelectValue placeholder="Turno" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {TURNOS.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
-            </SelectContent>
-          </Select>
         </div>
       )}
 

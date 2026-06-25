@@ -110,7 +110,7 @@ export async function updateControl(
   revalidatePath("/alcoholemia")
 }
 
-export async function buscarControles(search?: string, desde?: string, hasta?: string, dependencia?: string, cargo?: string, turno?: string) {
+export async function buscarControles(search?: string, desde?: string, hasta?: string, dependencia?: string, cargo?: string) {
   const conditions: string[] = ["a.deleted_at IS NULL"]
   const params: any[] = []
 
@@ -126,10 +126,6 @@ export async function buscarControles(search?: string, desde?: string, hasta?: s
   if (cargo) {
     params.push(`%${cargo}%`)
     conditions.push(`a.cargo ILIKE $${params.length}`)
-  }
-  if (turno) {
-    params.push(turno)
-    conditions.push(`a.turno = $${params.length}`)
   }
   if (desde) {
     params.push(desde)
