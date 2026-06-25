@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/db"
+import { sql, rawQuery } from "@/lib/db"
 import { requireAuth, jsonOk, jsonError, jsonNoContent, withCors } from "@/lib/auth"
 import { controlToDTO } from "@/lib/dto"
 
@@ -52,30 +52,48 @@ export async function GET(req: NextRequest) {
   try {
     let rows: any[]
 
-    if (search) {
-      const like = "%" + search + "%"
+    if (search || desde || hasta || fecha) {
+      const conditions: string[] = ["a.deleted_at IS NULL"]
+      const params: any[] = []
       const offset = (page - 1) * limit
-      rows = await sql`
-        SELECT c.*, a.legajo as agente_legajo, a.apellido_nombre as agente_nombre
-        FROM controles_alcoholemia c
-        JOIN agentes a ON c.agente_id = a.id AND a.deleted_at IS NULL
-        WHERE a.apellido_nombre ILIKE ${like} OR a.legajo ILIKE ${like}
-        ORDER BY c.fecha DESC, c.id DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `
-    } else if (fecha) {
-      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha = ${fecha} ORDER BY fecha DESC, id DESC LIMIT ${limit}`
-    } else if (desde && hasta) {
-      rows = await sql`SELECT * FROM controles_alcoholemia WHERE fecha BETWEEN ${desde} AND ${hasta} ORDER BY fecha DESC, id DESC LIMIT ${limit}`
+
+      if (search) {
+        const like = "%" + search + "%"
+        params.push(like, like)
+        conditions.push(`(a.apellido_nombre ILIKE $${params.length - 1} OR a.legajo ILIKE $${params.length})`)
+      }
+      if (fecha) {
+        params.push(fecha)
+        conditions.push(`c.fecha = $${params.length}`)
+      }
+      if (desde) {
+        params.push(desde)
+        conditions.push(`c.fecha >= $${params.length}`)
+      }
+      if (hasta) {
+        params.push(hasta)
+        conditions.push(`c.fecha <= $${params.length}`)
+      }
+
+      const where = `WHERE ${conditions.join(" AND ")}`
+      rows = await rawQuery<any>(
+        `SELECT c.*, a.legajo, a.apellido_nombre
+         FROM controles_alcoholemia c
+         JOIN agentes a ON a.id = c.agente_id
+         ${where}
+         ORDER BY c.fecha DESC, c.id DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset],
+      )
     } else {
       rows = await sql`SELECT * FROM controles_alcoholemia ORDER BY fecha DESC, id DESC LIMIT ${limit}`
     }
 
-    if (search) {
+    if (search || desde || hasta || fecha) {
       return withCors(jsonOk(rows.map((r: any) => ({
         ...controlToDTO(r),
-        legajo: r.agente_legajo,
-        apellidoNombre: r.agente_nombre,
+        legajo: r.legajo,
+        apellidoNombre: r.apellido_nombre,
       })), { page, limit }))
     }
 
