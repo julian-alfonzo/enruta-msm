@@ -277,6 +277,8 @@ export type SemanaGenerada = {
 export async function generarTodasLasSemanas(
   inputBuffer: ArrayBuffer,
   inputFileName: string,
+  incluirNombre?: boolean,
+  nombres?: Map<number, string>,
 ): Promise<{
   semanas: SemanaGenerada[]
   mesStr: string
@@ -327,7 +329,7 @@ export async function generarTodasLasSemanas(
     if (entradasSemana.length === 0) continue
 
     const nombreArchivo = `Parte Semanal del ${inicio} al ${fin} de ${mesStr}.xlsx`
-    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano }, nombreArchivo))
+    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano, incluirNombre }, nombreArchivo, nombres))
     semanas.push({ nombreArchivo, buffer, inicio, fin, totalRegistros: entradasSemana.length })
     totalRegistros += entradasSemana.length
   }
@@ -346,6 +348,7 @@ export function generarExcelSemanal(
   entradas: Entrada[],
   opciones: OpcionesProceso,
   _nombreSalida: string,
+  nombres?: Map<number, string>,
 ): ArrayBuffer {
   void _nombreSalida
 
@@ -367,6 +370,7 @@ export function generarExcelSemanal(
     { header: "Fecha Inicio", key: "fecha_inicio", width: 11.71, style: { numFmt: "d-mmm" } },
     { header: "Fecha Fin", key: "fecha_fin", width: 10, style: { numFmt: "d-mmm" } },
     { header: "Año", key: "anio", width: 11.71 },
+    ...(opciones.incluirNombre ? [{ header: "Nombre", key: "nombre", width: 25 }] : []),
   ]
   ws.getRow(1).font = { name: "Calibri", size: 11 }
   ws.getRow(1).alignment = { horizontal: "center" }
@@ -380,14 +384,19 @@ export function generarExcelSemanal(
       e.flag_927 ||
       (e.codigo != null && CODIGOS_REVISAR.has(e.codigo) && (legajoCount.get(e.legajo) ?? 0) > 1)
 
-    const row = ws.addRow({
+    const rowData: Record<string, unknown> = {
       legajo: e.legajo,
       nro_cargo: 1,
       licencia: isVacio ? "VACIO" : e.codigo,
       fecha_inicio: serialInicio,
       fecha_fin: serialFin,
       anio: opciones.ano,
-    })
+    }
+    if (opciones.incluirNombre && nombres) {
+      rowData.nombre = nombres.get(e.legajo) ?? ""
+    }
+
+    const row = ws.addRow(rowData)
 
     row.font = { name: "Calibri", size: 11 }
     row.alignment = { horizontal: "center" }

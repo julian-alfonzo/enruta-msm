@@ -24,6 +24,7 @@ export type OpcionesProceso = {
   mesNum: number
   ano: number
   nomencladorPath?: string
+  incluirNombre?: boolean
 }
 
 export type ResultadoProceso = {

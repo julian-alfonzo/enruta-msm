@@ -27,6 +27,7 @@ export function ReporteSemanalClient() {
   const [modo, setModo] = useState<Modo>("semana")
   const [inicio, setInicio] = useState(1)
   const [fin, setFin] = useState(7)
+  const [incluirNombre, setIncluirNombre] = useState(false)
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<Resultado | null>(null)
@@ -51,6 +52,7 @@ export function ReporteSemanalClient() {
         const fd = new FormData()
         fd.append("fuente", file)
         fd.append("modo", modo)
+        fd.append("incluirNombre", String(incluirNombre))
         if (modo === "semana") {
           fd.append("inicioSemana", String(inicio))
           fd.append("finSemana", String(fin))
@@ -283,6 +285,16 @@ export function ReporteSemanalClient() {
               Se generarán los partes de todas las semanas del mes detectado (1-7, 8-14, 15-21, 22-28, 29-fin), agrupados en un archivo .zip.
             </p>
           )}
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={incluirNombre}
+              onChange={(e) => setIncluirNombre(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary"
+            />
+            Incluir nombre del agente
+          </label>
 
           {error && (
             <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
