@@ -20,7 +20,7 @@ const navItems = [
   { href: "/agentes", label: "Agentes", icon: Users },
   { href: "/alcoholemia", label: "Alcoholemia", icon: FlaskConical },
   { href: "/observaciones", label: "Observaciones", icon: MessageSquare },
-  { href: "/reportes", label: "Reportes", icon: BarChart3 },
+  { href: "/reportes", label: "Estadísticas", icon: BarChart3 },
 ]
 
 const titles: Record<string, string> = {
@@ -28,7 +28,7 @@ const titles: Record<string, string> = {
   "/agentes": "Gestión de Agentes",
   "/alcoholemia": "Control de Alcoholemia",
   "/observaciones": "Reclamos y Observaciones",
-  "/reportes": "Reportes",
+  "/reportes": "Estadísticas",
   "/reportes-personal": "Reportes de personal",
   "/reportes-personal/semanal": "Reporte Semanal",
 }

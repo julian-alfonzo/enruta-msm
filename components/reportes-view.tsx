@@ -144,7 +144,7 @@ export function ReportesView() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8">
-      <h2 className="mb-1 text-2xl font-bold text-foreground lg:text-3xl">Reportes</h2>
+      <h2 className="mb-1 text-2xl font-bold text-foreground lg:text-3xl">Estadísticas</h2>
       <p className="mb-6 text-sm text-muted-foreground">Generá reportes en PDF o Excel</p>
 
       <Label className="mb-2 block text-sm font-semibold">Tipo de reporte</Label>

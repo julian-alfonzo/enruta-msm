@@ -54,7 +54,7 @@ const accesos: Acceso[] = [
   },
   {
     href: "/reportes",
-    titulo: "Reportes",
+    titulo: "Estadísticas",
     descripcion: "Exportación de alcoholemia y padrón en PDF/Excel",
     icon: FileBarChart,
     color: "text-foreground",
