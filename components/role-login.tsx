@@ -3,24 +3,56 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { useSession, type Rol } from "@/components/session-provider"
-import { cn } from "@/lib/utils"
-
-const roles: Rol[] = ["Administrador", "Caminadora", "Moto", "Tránsito", "Patrulla de Moto"]
+import { useSession } from "@/components/session-provider"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
 export function RoleLogin() {
   const router = useRouter()
   const { setSession } = useSession()
-  const [modo, setModo] = useState<"Local" | "Conectado">("Conectado")
+  const [usuario, setUsuario] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function ingresar(rol: Rol) {
-    setSession(rol, modo)
-    router.push("/")
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      const res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario, password }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.message || data.error || "Credenciales inválidas")
+        setLoading(false)
+        return
+      }
+
+      const data = await res.json()
+      sessionStorage.setItem("enruta_session", JSON.stringify({ rol: "Administrador", modo: "Conectado", token: data.accessToken }))
+      setSession("Administrador", "Conectado")
+      router.push("/")
+    } catch {
+      setError("Error de conexión")
+      setLoading(false)
+    }
+  }
+
+  function accesoDev() {
+    setUsuario("admin")
+    setPassword("admin123")
   }
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-10">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         <div className="flex flex-col items-center text-center">
           <div className="relative h-28 w-28 overflow-hidden rounded-full">
             <Image
@@ -35,42 +67,46 @@ export function RoleLogin() {
           <p className="mt-1 text-sm text-muted-foreground">MSM — Municipalidad de San Miguel</p>
         </div>
 
-        <div className="mt-10">
-          <h2 className="text-center text-xl font-bold text-foreground">Seleccioná tu rol</h2>
-          <p className="mt-4 text-center text-sm font-medium text-muted-foreground">Modo de operación</p>
-
-          <div className="mt-2 flex rounded-2xl bg-muted p-1.5">
-            {(["Local", "Conectado"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setModo(m)}
-                className={cn(
-                  "flex-1 rounded-xl py-3 text-sm font-semibold transition-colors",
-                  modo === m ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground",
-                )}
-              >
-                {m}
-              </button>
-            ))}
+        <form onSubmit={handleLogin} className="mt-10 flex flex-col gap-4">
+          <div>
+            <Input
+              type="text"
+              placeholder="Usuario"
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
+              className="rounded-xl h-12"
+              autoComplete="username"
+            />
           </div>
-          <p className="mt-2 text-center text-xs font-medium text-primary">
-            {modo === "Local" ? "Datos locales (Excel/Room)" : "Datos en la nube (Neon)"}
-          </p>
-
-          <div className="mt-6 flex flex-col gap-3">
-            {roles.map((rol) => (
-              <button
-                key={rol}
-                onClick={() => ingresar(rol)}
-                className={cn(
-                  "w-full rounded-2xl py-4 text-base font-semibold text-primary-foreground transition-transform active:scale-[0.99]",
-                  rol === "Administrador" ? "bg-primary" : "bg-primary/85 hover:bg-primary",
-                )}
-              >
-                {rol}
-              </button>
-            ))}
+          <div>
+            <Input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded-xl h-12"
+              autoComplete="current-password"
+            />
           </div>
+
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+
+          <Button type="submit" disabled={loading || !usuario || !password} className="h-12 rounded-xl">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Ingresar
+          </Button>
+        </form>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={accesoDev}
+            className="w-full rounded-xl border-2 border-dashed border-muted-foreground/30 py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+          >
+            acceso dev
+          </button>
         </div>
       </div>
     </main>
