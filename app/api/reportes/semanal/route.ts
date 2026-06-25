@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { extraerMesAno, procesarParteSemanal, generarExcelSemanal, generarTodasLasSemanas } from "@/lib/reportes/semanal/procesar"
-import { sql } from "@/lib/db"
 import JSZip from "jszip"
 
 export const runtime = "nodejs"
@@ -20,14 +19,9 @@ export async function POST(req: NextRequest) {
     const { mesStr, mesNum, ano } = extraerMesAno(file.name)
 
     const incluirNombre = (formData.get("incluirNombre") as string) === "true"
-    let nombres: Map<number, string> | undefined
-    if (incluirNombre) {
-      const agentes = await sql`SELECT legajo, apellido_nombre FROM agentes WHERE deleted_at IS NULL` as { legajo: string; apellido_nombre: string }[]
-      nombres = new Map(agentes.map((a) => [Number(a.legajo), a.apellido_nombre]))
-    }
 
     if (modo === "mes") {
-      const resultado = await generarTodasLasSemanas(buffer, file.name, incluirNombre, nombres)
+      const resultado = await generarTodasLasSemanas(buffer, file.name, incluirNombre)
 
       if (resultado.semanas.length === 0) {
         return NextResponse.json(
@@ -82,7 +76,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const xlsxBuffer = await generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano, incluirNombre }, resultado.nombreSalida, nombres)
+    const xlsxBuffer = await generarExcelSemanal(resultado.entradas, { inicioSemana, finSemana, mesNum, ano, incluirNombre }, resultado.nombreSalida)
 
     return new NextResponse(xlsxBuffer, {
       status: 200,

@@ -123,11 +123,15 @@ export function leerDatosFuente(buffer: ArrayBuffer, mesNum: number, ano: number
       if (vistos.has(clave)) continue
       vistos.add(clave)
 
+      const nombreRaw = row[2]
+      const nombre = nombreRaw != null && String(nombreRaw).trim() !== "" && String(nombreRaw).trim() !== "-" ? String(nombreRaw).trim() : undefined
+
       registros.push({
         legajo,
         fecha,
         motivo: esVacio ? null : String(motivoRaw),
         es_vacio: esVacio,
+        nombre,
       })
     }
   }
@@ -148,6 +152,7 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
       fecha_inicio: reg.fecha,
       fecha_fin: reg.fecha,
       flag_927: reg.flag_927 ?? false,
+      nombre: reg.nombre,
     })
   }
 
@@ -167,6 +172,7 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
     const has927 = items.some((r) => r.flag_927)
     const firstLegajo = items[0].legajo
     const firstCodigo: number | null = items[0].codigo ?? null
+    const firstNombre = items[0].nombre
     let inicioRango = fechasOrdenadas[0]
     let finRango = fechasOrdenadas[0]
 
@@ -175,12 +181,12 @@ export function consolidarPorRango(registros: Registro[]): Entrada[] {
       if (diff === 1) {
         finRango = fechasOrdenadas[i]
       } else {
-        resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927 })
+        resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre })
         inicioRango = fechasOrdenadas[i]
         finRango = fechasOrdenadas[i]
       }
     }
-    resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927 })
+    resultado.push({ legajo: firstLegajo, codigo: firstCodigo, fecha_inicio: inicioRango, fecha_fin: finRango, flag_927: has927, nombre: firstNombre })
   }
 
   return resultado
@@ -278,7 +284,6 @@ export async function generarTodasLasSemanas(
   inputBuffer: ArrayBuffer,
   inputFileName: string,
   incluirNombre?: boolean,
-  nombres?: Map<number, string>,
 ): Promise<{
   semanas: SemanaGenerada[]
   mesStr: string
@@ -329,7 +334,7 @@ export async function generarTodasLasSemanas(
     if (entradasSemana.length === 0) continue
 
     const nombreArchivo = `Parte Semanal del ${inicio} al ${fin} de ${mesStr}.xlsx`
-    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano, incluirNombre }, nombreArchivo, nombres))
+    const buffer = (await generarExcelSemanal(entradasSemana, { inicioSemana: inicio, finSemana: fin, mesNum, ano, incluirNombre }, nombreArchivo))
     semanas.push({ nombreArchivo, buffer, inicio, fin, totalRegistros: entradasSemana.length })
     totalRegistros += entradasSemana.length
   }
@@ -348,7 +353,6 @@ export function generarExcelSemanal(
   entradas: Entrada[],
   opciones: OpcionesProceso,
   _nombreSalida: string,
-  nombres?: Map<number, string>,
 ): ArrayBuffer {
   void _nombreSalida
 
@@ -392,8 +396,8 @@ export function generarExcelSemanal(
       fecha_fin: serialFin,
       anio: opciones.ano,
     }
-    if (opciones.incluirNombre && nombres) {
-      rowData.nombre = nombres.get(e.legajo) ?? ""
+    if (opciones.incluirNombre) {
+      rowData.nombre = e.nombre ?? ""
     }
 
     const row = ws.addRow(rowData)
