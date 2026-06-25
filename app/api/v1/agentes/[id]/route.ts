@@ -33,6 +33,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const errors: Array<{ field: string; message: string }> = []
     if (!legajo) errors.push({ field: "legajo", message: "legajo es obligatorio" })
     if (!apellidoNombre) errors.push({ field: "apellidoNombre", message: "apellidoNombre es obligatorio" })
+    if (turno && !["ROTATIVO", "MAÑANA", "TARDE", "NOCHE", "FIJO"].includes(turno)) {
+      errors.push({ field: "turno", message: `turno debe ser uno de: ROTATIVO, MAÑANA, TARDE, NOCHE, FIJO` })
+    }
     if (errors.length) {
       return withCors(jsonError(400, "VALIDATION_ERROR", errors[0].message, errors))
     }
