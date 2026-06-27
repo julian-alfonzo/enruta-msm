@@ -10,6 +10,15 @@ const TIPOS_VALIDOS = ["Observación", "Reclamo"]
 const RESULTADOS_VALIDOS = ["Positivo", "Negativo"]
 const SERVICIOS_VALIDOS = ["Cumpliendo servicio", "Hora extra"]
 
+async function resolveAgentId(agenteId: unknown, agenteLegajo: unknown): Promise<number | null> {
+  if (agenteId && typeof agenteId === "number") return agenteId
+  if (agenteLegajo && typeof agenteLegajo === "string") {
+    const rows = await sql`SELECT id FROM agentes WHERE legajo = ${agenteLegajo} AND deleted_at IS NULL LIMIT 1`
+    if (rows.length > 0) return rows[0].id as number
+  }
+  return null
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req)
   if (auth instanceof Response) return withCors(auth)
@@ -65,10 +74,11 @@ export async function POST(req: NextRequest) {
     if (body.alcoholemias?.created) {
       for (const c of body.alcoholemias.created) {
         const localId = c.localId ?? c.id
-        if (!c.agenteId || !c.fecha || !RESULTADOS_VALIDOS.includes(c.resultado)) continue
+        const agenteId = await resolveAgentId(c.agenteId, c.agenteLegajo)
+        if (!agenteId || !c.fecha || !RESULTADOS_VALIDOS.includes(c.resultado)) continue
         const inserted = await sql`
           INSERT INTO controles_alcoholemia (agente_id, fecha, resultado, graduacion, servicio_extra, observacion)
-          VALUES (${c.agenteId}, ${c.fecha}, ${c.resultado}, ${c.graduacion ?? null}, ${c.servicioExtra ?? null}, ${c.observacion ?? null})
+          VALUES (${agenteId}, ${c.fecha}, ${c.resultado}, ${c.graduacion ?? null}, ${c.servicioExtra ?? null}, ${c.observacion ?? null})
           RETURNING id
         `
         serverIds.alcoholemias[String(localId)] = inserted[0].id
@@ -78,10 +88,11 @@ export async function POST(req: NextRequest) {
     if (body.observaciones?.created) {
       for (const o of body.observaciones.created) {
         const localId = o.localId ?? o.id
-        if (!o.agenteId || !TIPOS_VALIDOS.includes(o.tipo) || !o.descripcion || !o.fecha) continue
+        const agenteId = await resolveAgentId(o.agenteId, o.agenteLegajo)
+        if (!agenteId || !TIPOS_VALIDOS.includes(o.tipo) || !o.descripcion || !o.fecha) continue
         const inserted = await sql`
           INSERT INTO observaciones_reclamos (agente_id, tipo, descripcion, fecha, resuelto)
-          VALUES (${o.agenteId}, ${o.tipo}, ${o.descripcion}, ${o.fecha}, ${o.resuelto ?? false})
+          VALUES (${agenteId}, ${o.tipo}, ${o.descripcion}, ${o.fecha}, ${o.resuelto ?? false})
           RETURNING id
         `
         serverIds.observaciones[String(localId)] = inserted[0].id

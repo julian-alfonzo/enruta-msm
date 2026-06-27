@@ -24,31 +24,37 @@ export async function POST(req: NextRequest) {
         : rawQuery(`SELECT * FROM agentes WHERE deleted_at IS NULL ORDER BY id`, []),
       lastSync
         ? rawQuery(
-            `SELECT id, deleted_at FROM agentes WHERE deleted_at IS NOT NULL AND deleted_at > $1`,
+            `SELECT id, legajo, deleted_at FROM agentes WHERE deleted_at IS NOT NULL AND deleted_at > $1`,
             [lastSync],
           )
-        : rawQuery(`SELECT id, deleted_at FROM agentes WHERE deleted_at IS NOT NULL`, []),
+        : rawQuery(`SELECT id, legajo, deleted_at FROM agentes WHERE deleted_at IS NOT NULL`, []),
       lastSync
         ? rawQuery(
-            `SELECT * FROM controles_alcoholemia WHERE created_at > $1 ORDER BY id`,
+            `SELECT c.*, a.legajo AS agente_legajo FROM controles_alcoholemia c JOIN agentes a ON a.id = c.agente_id WHERE c.created_at > $1 ORDER BY c.id`,
             [lastSync],
           )
-        : rawQuery(`SELECT * FROM controles_alcoholemia ORDER BY id`, []),
+        : rawQuery(`SELECT c.*, a.legajo AS agente_legajo FROM controles_alcoholemia c JOIN agentes a ON a.id = c.agente_id ORDER BY c.id`, []),
       lastSync
         ? rawQuery(
-            `SELECT * FROM observaciones_reclamos WHERE created_at > $1 ORDER BY id`,
+            `SELECT o.*, a.legajo AS agente_legajo FROM observaciones_reclamos o JOIN agentes a ON a.id = o.agente_id WHERE o.created_at > $1 ORDER BY o.id`,
             [lastSync],
           )
-        : rawQuery(`SELECT * FROM observaciones_reclamos ORDER BY id`, []),
+        : rawQuery(`SELECT o.*, a.legajo AS agente_legajo FROM observaciones_reclamos o JOIN agentes a ON a.id = o.agente_id ORDER BY o.id`, []),
     ])
 
     return withCors(
       jsonOk({
         agentes: (agentes as any[]).map(agenteToDTO),
-        alcoholemias: (controles as any[]).map(controlToDTO),
-        observaciones: (observaciones as any[]).map(observacionToDTO),
+        alcoholemias: (controles as any[]).map((c) => ({
+          ...controlToDTO(c),
+          agenteLegajo: c.agente_legajo,
+        })),
+        observaciones: (observaciones as any[]).map((o) => ({
+          ...observacionToDTO(o),
+          agenteLegajo: o.agente_legajo,
+        })),
         deleted: {
-          agentes: (deletedAgentes as any[]).map((a) => ({ id: a.id, deletedAt: a.deleted_at })),
+          agentes: (deletedAgentes as any[]).map((a) => ({ id: a.id, legajo: a.legajo, deletedAt: a.deleted_at })),
           alcoholemias: [],
           observaciones: [],
         },
