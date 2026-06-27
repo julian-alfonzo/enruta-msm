@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:import:agentes": "tsx scripts/import-all.ts",
+    "db:update:activos": "tsx --env-file .env.local scripts/update-all.ts",
+    "db:import:activos": "tsx --env-file .env.local scripts/import-activos.ts",
     "db:import:controles": "tsx scripts/import-controls.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
