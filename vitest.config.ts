@@ -5,7 +5,19 @@ export default defineConfig({
   test: {
     coverage: {
       provider: "v8",
-      include: ["lib/reportes/semanal/*.ts"],
+      include: [
+        "app/api/v1/agentes/**/*.ts",
+        "app/api/v1/sync/**/*.ts",
+        "lib/**/*.ts",
+      ],
+      exclude: [
+        "**/node_modules/**",
+        "**/.next/**",
+        "**/agentes/[id]/alcoholemias/**",
+        "**/agentes/[id]/observaciones/**",
+        "**/agentes/[id]/route.ts",
+        "**/agentes/legajo/[legajo]/observaciones/reporte/**",
+      ],
       thresholds: {
         statements: 80,
         branches: 80,
